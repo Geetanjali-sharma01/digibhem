@@ -3,14 +3,25 @@ import { useApp } from './AppContext';
 import { Btn, Input } from './components';
 
 function Panel({ children }) {
+  const { theme, toggleTheme } = useApp();
+  const isDark = theme === 'dark';
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', background: 'linear-gradient(135deg,#091830 0%,#0d2040 50%,#081525 100%)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', background: isDark ? 'linear-gradient(135deg,#091830 0%,#0d2040 50%,#081525 100%)' : 'linear-gradient(135deg,#f4f7fb 0%,#e7eef7 50%,#f4f7fb 100%)' }}>
+      {/* Theme toggle */}
+      <div style={{ position:'absolute', top:20, right:24, display:'flex', alignItems:'center', gap:10, padding:'8px 14px', borderRadius:12, background: isDark ? 'rgba(21,42,74,0.85)' : 'rgba(255,255,255,0.85)', border:'1px solid var(--border)', backdropFilter:'blur(8px)', zIndex:10 }}>
+        <span style={{ fontSize:13, color: isDark ? '#fff' : '#0f172a' }}>{isDark ? '🌙' : '☀️'}</span>
+        <label style={{ position:'relative', display:'inline-flex', alignItems:'center', width:44, height:24, cursor:'pointer' }}>
+          <input type="checkbox" checked={isDark} onChange={toggleTheme} style={{ position:'absolute', opacity:0, width:0, height:0 }} />
+          <span style={{ position:'absolute', inset:0, borderRadius:9999, background: isDark ? 'var(--teal)' : 'rgba(15,23,42,0.15)', transition:'background 0.2s' }} />
+          <span style={{ position:'absolute', left: isDark ? '20px' : '4px', top: '4px', width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }} />
+        </label>
+      </div>
       {/* Decorative left */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: 48, borderRight: '1px solid rgba(0,180,166,0.15)', background: 'radial-gradient(ellipse at 30% 50%, rgba(0,180,166,0.08) 0%, transparent 70%)' }} className="auth-left">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: 48, borderRight: isDark ? '1px solid rgba(0,180,166,0.15)' : '1px solid rgba(15,23,42,0.08)', background: isDark ? 'radial-gradient(ellipse at 30% 50%, rgba(0,180,166,0.08) 0%, transparent 70%)' : 'radial-gradient(ellipse at 30% 50%, rgba(15,156,141,0.06) 0%, transparent 70%)' }} className="auth-left">
         <div style={{ maxWidth: 380 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 40 }}>
             <div style={{ width: 50, height: 50, borderRadius: 14, background: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🩺</div>
-            <div><div style={{ fontFamily: 'DM Serif Display', fontSize: 30 }}>MediBook</div><div style={{ fontSize: 12, color: 'var(--text-light)' }}>Smart Healthcare Booking</div></div>
+            <div><div style={{ fontFamily: 'DM Serif Display', fontSize: 30, color: 'var(--text-primary)' }}>MediBook</div><div style={{ fontSize: 12, color: 'var(--text-light)' }}>Smart Healthcare Booking</div></div>
           </div>
           {[['🏥','Top Specialists','Access cardiologists, neurologists & more'],
             ['📅','Easy Scheduling','Book, reschedule, cancel in seconds'],
@@ -18,14 +29,14 @@ function Panel({ children }) {
             ['🔒','Secure & Private','Your health data is encrypted']].map(([icon, t, d]) => (
             <div key={t} style={{ display: 'flex', gap: 16, marginBottom: 22, alignItems: 'flex-start' }}>
               <span style={{ fontSize: 22 }}>{icon}</span>
-              <div><p style={{ fontWeight: 600, marginBottom: 2 }}>{t}</p><p style={{ fontSize: 13, color: 'var(--text-light)' }}>{d}</p></div>
+              <div><p style={{ fontWeight: 600, marginBottom: 2, color: 'var(--text-primary)' }}>{t}</p><p style={{ fontSize: 13, color: 'var(--text-light)' }}>{d}</p></div>
             </div>
           ))}
         </div>
       </div>
       {/* Right form */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <div style={{ width: '100%', maxWidth: 430, background: 'rgba(21,42,74,0.9)', borderRadius: 20, border: '1px solid var(--border)', padding: 36, boxShadow: '0 24px 64px rgba(0,0,0,0.5)', animation: 'fadeIn 0.35s ease' }}>
+        <div style={{ width: '100%', maxWidth: 430, background: isDark ? 'rgba(21,42,74,0.9)' : 'rgba(255,255,255,0.92)', borderRadius: 20, border: '1px solid var(--border)', padding: 36, boxShadow: isDark ? '0 24px 64px rgba(0,0,0,0.5)' : '0 24px 64px rgba(15,23,42,0.12)', animation: 'fadeIn 0.35s ease' }}>
           {children}
         </div>
       </div>
