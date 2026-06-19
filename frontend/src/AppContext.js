@@ -36,7 +36,7 @@ const DOCTOR_ACCOUNTS = DOCTORS_DATA.map(d => ({
   doctorId: d.id,
 }));
 
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 const DOCTOR_ID_MAP = {
   'sharma@medibook.com': 'd1',
@@ -150,7 +150,7 @@ export function AppProvider({ children }) {
   /* ───── Auth ───── */
   const register = async (data) => {
     try {
-      const resp = await fetch('http://localhost:5000/api/auth/register', {
+      const resp = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -166,7 +166,7 @@ export function AppProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const resp = await fetch('http://localhost:5000/api/auth/login', {
+      const resp = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });

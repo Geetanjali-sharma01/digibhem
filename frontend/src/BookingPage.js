@@ -3,7 +3,7 @@ import { useApp } from './AppContext';
 import { Card, Btn, Avatar, Input, Modal, StatusBadge, StarRating, Toast, EmptyState } from './components';
 
 const SPECIALTIES = ['All','Cardiologist','Neurologist','Dermatologist','Orthopedic','Pediatrician','General Physician'];
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 function fmt(dateStr) {
   if (!dateStr) return '';
