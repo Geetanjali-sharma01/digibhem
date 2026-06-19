@@ -1,8 +1,9 @@
 node_modules
 frontend/node_modules
-./backend
-./server
-./src
-./build
+backend
+server
+src
+build
 .git
 *.log
+.railway

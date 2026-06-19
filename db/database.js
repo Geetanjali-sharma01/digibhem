@@ -2,7 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'doctor-booking.db');
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'doctor-booking.db');
 const db = new sqlite3.Database(dbPath);
 
 // Specialty mapping keyed by doctor email (lowercase last-name prefix)
