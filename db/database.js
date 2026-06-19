@@ -145,7 +145,10 @@ const initDb = (onReady) => {
           // Seed doctor/admin user accounts first, then create doctors/patients rows
           ensureSeedUsers(() => {
             seedDoctorsAndPatients(() => {
-              if (onReady) onReady(null);
+              // Run migration to add any missing doctors to persistent DBs
+              migrateNewDoctors(() => {
+                if (onReady) onReady(null);
+              });
             });
           });
         });
@@ -153,6 +156,49 @@ const initDb = (onReady) => {
     );
   });
 };
+
+// One-time migration: insert any SEED_DOCTOR_ACCOUNTS missing from the live DB.
+// Safe to run on every startup — uses INSERT OR IGNORE / checks before inserting.
+function migrateNewDoctors(done) {
+  let remaining = SEED_DOCTOR_ACCOUNTS.length;
+  if (remaining === 0) return done();
+  const finish = () => { if (--remaining <= 0) done(); };
+
+  SEED_DOCTOR_ACCOUNTS.forEach(acct => {
+    db.get('SELECT id FROM users WHERE email = ?', [acct.email], (err, userRow) => {
+      if (err) { console.error('migrateNewDoctors lookup error:', err); return finish(); }
+
+      const insertDoctorRow = (userId) => {
+        const specialty = DOCTOR_SPECIALTY_MAP[acct.email] || 'General Physician';
+        db.run(
+          'INSERT OR IGNORE INTO doctors (user_id, specialty) VALUES (?, ?)',
+          [userId, specialty],
+          (dErr) => {
+            if (!dErr) console.log(`[migration] Ensured doctor row: ${acct.email} → ${specialty}`);
+            finish();
+          }
+        );
+      };
+
+      if (userRow) {
+        // User already exists — just ensure doctor row
+        insertDoctorRow(userRow.id);
+      } else {
+        // New doctor — insert user then doctor row
+        const hash = bcrypt.hashSync(acct.password, 10);
+        db.run(
+          'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+          [acct.name, acct.email, hash, 'doctor'],
+          function (insErr) {
+            if (insErr) { console.error('[migration] insert user error:', insErr); return finish(); }
+            console.log(`[migration] Added new doctor user: ${acct.email}`);
+            insertDoctorRow(this.lastID);
+          }
+        );
+      }
+    });
+  });
+}
 
 // Ensure all pre-seeded user accounts (doctors + admin) exist.
 // Uses INSERT OR IGNORE so existing rows are not duplicated.

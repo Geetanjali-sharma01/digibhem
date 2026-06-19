@@ -1,4 +1,4 @@
-# Build v2 - 13 doctors
+# Build v3 - 13 doctors with migration
 FROM node:22-slim
 
 WORKDIR /app
