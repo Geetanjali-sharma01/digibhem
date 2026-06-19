@@ -16,6 +16,19 @@ const DOCTOR_SPECIALTY_MAP = {
 };
 const FALLBACK_SPECIALTIES = ['Cardiologist', 'Neurologist', 'Dermatologist', 'Orthopedic', 'Pediatrician', 'General Physician'];
 
+// Pre-seeded doctor accounts (always created on init so bookings work on fresh DBs)
+const SEED_DOCTOR_ACCOUNTS = [
+  { name: 'Dr. Priya Sharma',    email: 'sharma@medibook.com',   password: 'doctor123' },
+  { name: 'Dr. Arjun Mehta',     email: 'mehta@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Sneha Kulkarni', email: 'kulkarni@medibook.com', password: 'doctor123' },
+  { name: 'Dr. Rohit Patil',     email: 'patil@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Anita Desai',    email: 'desai@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Vikram Joshi',   email: 'joshi@medibook.com',    password: 'doctor123' },
+];
+
+// Pre-seeded admin account
+const SEED_ADMIN_ACCOUNT = { name: 'Admin', email: 'admin@medibook.com', password: 'admin123' };
+
 const DOCTORS_SQL = `
   CREATE TABLE IF NOT EXISTS doctors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,15 +128,48 @@ const initDb = (onReady) => {
             if (onReady) onReady(createErr);
             return;
           }
-          // Seed any missing doctors/patients from users table
-          seedDoctorsAndPatients(() => {
-            if (onReady) onReady(null);
+          // Seed doctor/admin user accounts first, then create doctors/patients rows
+          ensureSeedUsers(() => {
+            seedDoctorsAndPatients(() => {
+              if (onReady) onReady(null);
+            });
           });
         });
       }
     );
   });
 };
+
+// Ensure all pre-seeded user accounts (doctors + admin) exist.
+// Uses INSERT OR IGNORE so existing rows are not duplicated.
+function ensureSeedUsers(done) {
+  const allAccounts = [
+    ...SEED_DOCTOR_ACCOUNTS.map(a => ({ ...a, role: 'doctor' })),
+    { ...SEED_ADMIN_ACCOUNT, role: 'admin' },
+  ];
+
+  let remaining = allAccounts.length;
+  const finish = () => { if (--remaining <= 0) done(); };
+
+  allAccounts.forEach(acct => {
+    // Check if user already exists
+    db.get('SELECT id FROM users WHERE email = ?', [acct.email], (err, row) => {
+      if (err) { console.error('ensureSeedUsers check error:', err); return finish(); }
+      if (row) return finish(); // already exists
+
+      const hash = bcrypt.hashSync(acct.password, 10);
+      db.run(
+        'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+        [acct.name, acct.email, hash, acct.role],
+        (insErr) => {
+          if (insErr) console.error('ensureSeedUsers insert error:', insErr);
+          else console.log(`Seeded user account: ${acct.email} (${acct.role})`);
+          finish();
+        }
+      );
+    });
+  });
+}
 
 function seedDoctorsAndPatients(done) {
   let pending = 2; // two async seed groups
