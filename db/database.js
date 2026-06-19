@@ -146,8 +146,15 @@ const initDb = (onReady) => {
           ensureSeedUsers(() => {
             seedDoctorsAndPatients(() => {
               // Run migration to add any missing doctors to persistent DBs
+              console.log('[migration] Starting migration to ensure all 13 doctors exist...');
               migrateNewDoctors(() => {
-                if (onReady) onReady(null);
+                // Verify final count
+                db.get('SELECT COUNT(*) as count FROM doctors', [], (countErr, countRow) => {
+                  if (!countErr) {
+                    console.log(`[migration] Total doctors in database: ${countRow.count}`);
+                  }
+                  if (onReady) onReady(null);
+                });
               });
             });
           });
