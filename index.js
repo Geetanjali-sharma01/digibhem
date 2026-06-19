@@ -11,12 +11,19 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 
 const DOCTOR_ID_MAP = {
-  'sharma@medibook.com': 'd1',
-  'mehta@medibook.com': 'd2',
+  'sharma@medibook.com':   'd1',
+  'mehta@medibook.com':    'd2',
   'kulkarni@medibook.com': 'd3',
-  'patil@medibook.com': 'd4',
-  'desai@medibook.com': 'd5',
-  'joshi@medibook.com': 'd6',
+  'patil@medibook.com':    'd4',
+  'desai@medibook.com':    'd5',
+  'joshi@medibook.com':    'd6',
+  'nair@medibook.com':     'd7',
+  'reddy@medibook.com':    'd8',
+  'gupta@medibook.com':    'd9',
+  'iyer@medibook.com':     'd10',
+  'malhotra@medibook.com': 'd11',
+  'bose@medibook.com':     'd12',
+  'kapoor@medibook.com':   'd13',
 };
 
 const DOCTOR_CODE_TO_EMAIL = Object.entries(DOCTOR_ID_MAP).reduce((acc, [email, code]) => {

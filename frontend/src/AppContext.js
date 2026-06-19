@@ -18,12 +18,19 @@ function genSlots(daysOffOn = [], slotSets = ['08:00','09:00','10:00','11:00','1
 }
 
 export const DOCTORS_DATA = [
-  { id: 'd1', name: 'Dr. Priya Sharma',    specialty: 'Cardiologist',      experience: '14 yrs', ratingSum: 44, ratingCount: 9, fee: 800, available: true,  qualification: 'MBBS, MD (Cardiology), DM', hospital: 'Apollo Hospital', slots: genSlots([0,6], ['09:00','10:00','11:00','14:00','15:00','16:00']) },
-  { id: 'd2', name: 'Dr. Arjun Mehta',     specialty: 'Neurologist',       experience: '10 yrs', ratingSum: 37, ratingCount: 8, fee: 700, available: true,  qualification: 'MBBS, MD, DM (Neurology)', hospital: 'Fortis Hospital', slots: genSlots([0,5], ['08:00','09:30','11:00','13:00','15:00','16:30']) },
-  { id: 'd3', name: 'Dr. Sneha Kulkarni', specialty: 'Dermatologist',     experience: '8 yrs',  ratingSum: 48, ratingCount: 10,fee: 600, available: true,  qualification: 'MBBS, DVD, DNB', hospital: 'Ruby Hall Clinic', slots: genSlots([0], ['10:00','11:30','13:00','14:00','16:00','17:00']) },
-  { id: 'd4', name: 'Dr. Rohit Patil',     specialty: 'Orthopedic',        experience: '12 yrs', ratingSum: 32, ratingCount: 7, fee: 750, available: true,  qualification: 'MBBS, MS (Ortho)', hospital: 'Sahyadri Hospital', slots: genSlots([0,6], ['09:00','11:00','13:00','14:00','16:00']) },
-  { id: 'd5', name: 'Dr. Anita Desai',    specialty: 'Pediatrician',      experience: '16 yrs', ratingSum: 49, ratingCount: 10,fee: 650, available: true,  qualification: 'MBBS, MD (Pediatrics)', hospital: 'KEM Hospital', slots: genSlots([0], ['08:30','10:00','11:30','13:00','14:30','16:00']) },
-  { id: 'd6', name: 'Dr. Vikram Joshi',   specialty: 'General Physician', experience: '9 yrs',  ratingSum: 40, ratingCount: 9, fee: 500, available: true,  qualification: 'MBBS, MD', hospital: 'City Care Clinic', slots: genSlots([6], ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00']) },
+  { id: 'd1',  name: 'Dr. Priya Sharma',    specialty: 'Cardiologist',         experience: '14 yrs', ratingSum: 44, ratingCount: 9,  fee: 800, available: true,  qualification: 'MBBS, MD (Cardiology), DM',        hospital: 'Apollo Hospital',        slots: genSlots([0,6], ['09:00','10:00','11:00','14:00','15:00','16:00']) },
+  { id: 'd2',  name: 'Dr. Arjun Mehta',     specialty: 'Neurologist',          experience: '10 yrs', ratingSum: 37, ratingCount: 8,  fee: 700, available: true,  qualification: 'MBBS, MD, DM (Neurology)',         hospital: 'Fortis Hospital',        slots: genSlots([0,5], ['08:00','09:30','11:00','13:00','15:00','16:30']) },
+  { id: 'd3',  name: 'Dr. Sneha Kulkarni',  specialty: 'Dermatologist',        experience: '8 yrs',  ratingSum: 48, ratingCount: 10, fee: 600, available: true,  qualification: 'MBBS, DVD, DNB',                  hospital: 'Ruby Hall Clinic',       slots: genSlots([0], ['10:00','11:30','13:00','14:00','16:00','17:00']) },
+  { id: 'd4',  name: 'Dr. Rohit Patil',     specialty: 'Orthopedic',           experience: '12 yrs', ratingSum: 32, ratingCount: 7,  fee: 750, available: true,  qualification: 'MBBS, MS (Ortho)',                 hospital: 'Sahyadri Hospital',      slots: genSlots([0,6], ['09:00','11:00','13:00','14:00','16:00']) },
+  { id: 'd5',  name: 'Dr. Anita Desai',     specialty: 'Pediatrician',         experience: '16 yrs', ratingSum: 49, ratingCount: 10, fee: 650, available: true,  qualification: 'MBBS, MD (Pediatrics)',            hospital: 'KEM Hospital',           slots: genSlots([0], ['08:30','10:00','11:30','13:00','14:30','16:00']) },
+  { id: 'd6',  name: 'Dr. Vikram Joshi',    specialty: 'General Physician',    experience: '9 yrs',  ratingSum: 40, ratingCount: 9,  fee: 500, available: true,  qualification: 'MBBS, MD',                         hospital: 'City Care Clinic',       slots: genSlots([6], ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00']) },
+  { id: 'd7',  name: 'Dr. Kavya Nair',      specialty: 'ENT Specialist',       experience: '7 yrs',  ratingSum: 38, ratingCount: 8,  fee: 550, available: true,  qualification: 'MBBS, MS (ENT)',                   hospital: 'AIIMS Delhi',            slots: genSlots([0,3], ['09:00','10:30','12:00','14:00','15:30']) },
+  { id: 'd8',  name: 'Dr. Suresh Reddy',    specialty: 'Ophthalmologist',      experience: '11 yrs', ratingSum: 43, ratingCount: 9,  fee: 680, available: true,  qualification: 'MBBS, MS (Ophthalmology)',         hospital: 'LV Prasad Eye Institute', slots: genSlots([0,6], ['10:00','11:00','13:00','14:00','16:00']) },
+  { id: 'd9',  name: 'Dr. Neha Gupta',      specialty: 'Psychiatrist',         experience: '6 yrs',  ratingSum: 35, ratingCount: 7,  fee: 900, available: true,  qualification: 'MBBS, MD (Psychiatry)',            hospital: 'NIMHANS',                slots: genSlots([0,6], ['11:00','12:00','14:00','15:00','16:00']) },
+  { id: 'd10', name: 'Dr. Rajan Iyer',      specialty: 'Gastroenterologist',   experience: '13 yrs', ratingSum: 46, ratingCount: 9,  fee: 850, available: true,  qualification: 'MBBS, MD, DM (Gastroenterology)', hospital: 'Medanta Hospital',       slots: genSlots([0,5], ['09:30','11:00','13:30','15:00','16:30']) },
+  { id: 'd11', name: 'Dr. Pooja Malhotra',  specialty: 'Endocrinologist',      experience: '10 yrs', ratingSum: 41, ratingCount: 8,  fee: 750, available: true,  qualification: 'MBBS, MD, DM (Endocrinology)',    hospital: 'Max Hospital',           slots: genSlots([0,3], ['09:00','10:30','12:00','14:30','16:00']) },
+  { id: 'd12', name: 'Dr. Arnab Bose',      specialty: 'Pulmonologist',        experience: '15 yrs', ratingSum: 50, ratingCount: 10, fee: 780, available: true,  qualification: 'MBBS, MD (Pulmonology)',           hospital: 'PGI Chandigarh',         slots: genSlots([0,6], ['08:00','09:30','11:00','14:00','15:30']) },
+  { id: 'd13', name: 'Dr. Simran Kapoor',   specialty: 'Rheumatologist',       experience: '8 yrs',  ratingSum: 36, ratingCount: 7,  fee: 720, available: true,  qualification: 'MBBS, MD, DM (Rheumatology)',     hospital: 'Sir Ganga Ram Hospital', slots: genSlots([0,5], ['10:00','11:30','13:00','14:30','16:00']) },
 ];
 
 // Doctor login accounts (pre-seeded)
@@ -39,12 +46,19 @@ const DOCTOR_ACCOUNTS = DOCTORS_DATA.map(d => ({
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 const DOCTOR_ID_MAP = {
-  'sharma@medibook.com': 'd1',
-  'mehta@medibook.com': 'd2',
+  'sharma@medibook.com':   'd1',
+  'mehta@medibook.com':    'd2',
   'kulkarni@medibook.com': 'd3',
-  'patil@medibook.com': 'd4',
-  'desai@medibook.com': 'd5',
-  'joshi@medibook.com': 'd6',
+  'patil@medibook.com':    'd4',
+  'desai@medibook.com':    'd5',
+  'joshi@medibook.com':    'd6',
+  'nair@medibook.com':     'd7',
+  'reddy@medibook.com':    'd8',
+  'gupta@medibook.com':    'd9',
+  'iyer@medibook.com':     'd10',
+  'malhotra@medibook.com': 'd11',
+  'bose@medibook.com':     'd12',
+  'kapoor@medibook.com':   'd13',
 };
 
 export function AppProvider({ children }) {
@@ -374,7 +388,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       user, login, register, logout, updateProfile,
       theme, toggleTheme,
-      doctors, patients, DOCTOR_ACCOUNTS, appointments,
+      doctors, DOCTORS: doctors, patients, DOCTOR_ACCOUNTS, appointments,
       bookAppointment, cancelAppointment, rescheduleAppointment, rateAppointment,
       acceptAppointment, rejectAppointment, completeAppointment,
       myAppointments, doctorAppointments, myDoctorProfile,

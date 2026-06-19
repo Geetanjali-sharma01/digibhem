@@ -7,23 +7,37 @@ const db = new sqlite3.Database(dbPath);
 
 // Specialty mapping keyed by doctor email (lowercase last-name prefix)
 const DOCTOR_SPECIALTY_MAP = {
-  'sharma@medibook.com': 'Cardiologist',
-  'mehta@medibook.com': 'Neurologist',
+  'sharma@medibook.com':   'Cardiologist',
+  'mehta@medibook.com':    'Neurologist',
   'kulkarni@medibook.com': 'Dermatologist',
-  'patil@medibook.com': 'Orthopedic',
-  'desai@medibook.com': 'Pediatrician',
-  'joshi@medibook.com': 'General Physician',
+  'patil@medibook.com':    'Orthopedic',
+  'desai@medibook.com':    'Pediatrician',
+  'joshi@medibook.com':    'General Physician',
+  'nair@medibook.com':     'ENT Specialist',
+  'reddy@medibook.com':    'Ophthalmologist',
+  'gupta@medibook.com':    'Psychiatrist',
+  'iyer@medibook.com':     'Gastroenterologist',
+  'malhotra@medibook.com': 'Endocrinologist',
+  'bose@medibook.com':     'Pulmonologist',
+  'kapoor@medibook.com':   'Rheumatologist',
 };
-const FALLBACK_SPECIALTIES = ['Cardiologist', 'Neurologist', 'Dermatologist', 'Orthopedic', 'Pediatrician', 'General Physician'];
+const FALLBACK_SPECIALTIES = ['Cardiologist', 'Neurologist', 'Dermatologist', 'Orthopedic', 'Pediatrician', 'General Physician', 'ENT Specialist', 'Ophthalmologist', 'Psychiatrist', 'Gastroenterologist', 'Endocrinologist', 'Pulmonologist', 'Rheumatologist'];
 
 // Pre-seeded doctor accounts (always created on init so bookings work on fresh DBs)
 const SEED_DOCTOR_ACCOUNTS = [
   { name: 'Dr. Priya Sharma',    email: 'sharma@medibook.com',   password: 'doctor123' },
   { name: 'Dr. Arjun Mehta',     email: 'mehta@medibook.com',    password: 'doctor123' },
-  { name: 'Dr. Sneha Kulkarni', email: 'kulkarni@medibook.com', password: 'doctor123' },
+  { name: 'Dr. Sneha Kulkarni',  email: 'kulkarni@medibook.com', password: 'doctor123' },
   { name: 'Dr. Rohit Patil',     email: 'patil@medibook.com',    password: 'doctor123' },
-  { name: 'Dr. Anita Desai',    email: 'desai@medibook.com',    password: 'doctor123' },
-  { name: 'Dr. Vikram Joshi',   email: 'joshi@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Anita Desai',     email: 'desai@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Vikram Joshi',    email: 'joshi@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Kavya Nair',      email: 'nair@medibook.com',     password: 'doctor123' },
+  { name: 'Dr. Suresh Reddy',    email: 'reddy@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Neha Gupta',      email: 'gupta@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Rajan Iyer',      email: 'iyer@medibook.com',     password: 'doctor123' },
+  { name: 'Dr. Pooja Malhotra',  email: 'malhotra@medibook.com', password: 'doctor123' },
+  { name: 'Dr. Arnab Bose',      email: 'bose@medibook.com',     password: 'doctor123' },
+  { name: 'Dr. Simran Kapoor',   email: 'kapoor@medibook.com',   password: 'doctor123' },
 ];
 
 // Pre-seeded admin account
