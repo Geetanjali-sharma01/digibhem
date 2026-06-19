@@ -169,16 +169,42 @@ function ensureSeedUsers(done) {
     // Check if user already exists
     db.get('SELECT id FROM users WHERE email = ?', [acct.email], (err, row) => {
       if (err) { console.error('ensureSeedUsers check error:', err); return finish(); }
-      if (row) return finish(); // already exists
+      if (row) {
+        // User exists — still ensure doctor row exists (handles upgrades where user exists but doctor row missing)
+        if (acct.role === 'doctor') {
+          const specialty = DOCTOR_SPECIALTY_MAP[acct.email] || 'General Physician';
+          db.run(
+            'INSERT OR IGNORE INTO doctors (user_id, specialty) VALUES (?, ?)',
+            [row.id, specialty],
+            (dErr) => {
+              if (!dErr) console.log(`Ensured doctor row for existing user: ${acct.email} → ${specialty}`);
+              finish();
+            }
+          );
+        } else {
+          return finish();
+        }
+        return;
+      }
 
       const hash = bcrypt.hashSync(acct.password, 10);
       db.run(
         'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
         [acct.name, acct.email, hash, acct.role],
-        (insErr) => {
-          if (insErr) console.error('ensureSeedUsers insert error:', insErr);
-          else console.log(`Seeded user account: ${acct.email} (${acct.role})`);
-          finish();
+        function (insErr) {
+          if (insErr) { console.error('ensureSeedUsers insert error:', insErr); return finish(); }
+          console.log(`Seeded user account: ${acct.email} (${acct.role})`);
+          // Also create doctor row immediately
+          if (acct.role === 'doctor') {
+            const specialty = DOCTOR_SPECIALTY_MAP[acct.email] || 'General Physician';
+            db.run(
+              'INSERT OR IGNORE INTO doctors (user_id, specialty) VALUES (?, ?)',
+              [this.lastID, specialty],
+              () => finish()
+            );
+          } else {
+            finish();
+          }
         }
       );
     });
