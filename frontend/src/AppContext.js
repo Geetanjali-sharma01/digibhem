@@ -118,6 +118,40 @@ export function AppProvider({ children }) {
     }
   };
 
+  const fetchDoctors = async () => {
+    try {
+      const resp = await fetch(`${BACKEND_URL}/api/doctors`);
+      const data = await resp.json();
+      if (!resp.ok || !Array.isArray(data)) return;
+      // Merge backend doctors (name, specialty, rating) with local rich data (fee, experience, slots, etc.)
+      const merged = data.map(backendDoc => {
+        const local = DOCTORS_DATA.find(d => d.name === backendDoc.name) || {};
+        return {
+          ...local,
+          id: local.id || String(backendDoc.id),
+          name: backendDoc.name,
+          specialty: backendDoc.specialty || local.specialty,
+          rating: backendDoc.review_count > 0 ? parseFloat((backendDoc.rating || 0).toFixed(1)) : (local.ratingCount ? parseFloat((local.ratingSum / local.ratingCount).toFixed(1)) : 0),
+          ratingCount: backendDoc.review_count || local.ratingCount || 0,
+          fee: local.fee || 500,
+          experience: local.experience || 'N/A',
+          qualification: local.qualification || 'MBBS',
+          hospital: local.hospital || '',
+          available: local.available !== undefined ? local.available : true,
+          slots: local.slots || genSlots([], ['09:00','10:00','11:00','14:00','15:00','16:00']),
+        };
+      });
+      if (merged.length > 0) setDoctors(merged);
+    } catch (e) {
+      console.error('Failed to load doctors', e);
+    }
+  };
+
+  useEffect(() => {
+    // Load doctors from backend on mount (merges with local rich data)
+    fetchDoctors();
+  }, []);
+
   useEffect(() => {
     // Auto-login if token present
     const token = localStorage.getItem('token');
