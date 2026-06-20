@@ -57,7 +57,12 @@ app.get('/api/doctors', (req, res) => {
   `;
   db.all(sql, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+    // Map database doctor IDs to frontend doctor codes (d1, d2, etc.)
+    const doctorsWithCodes = rows.map(row => ({
+      ...row,
+      doctor_code: DOCTOR_ID_MAP[row.email] || `d${row.id}`,
+    }));
+    res.json(doctorsWithCodes);
   });
 });
 
@@ -92,7 +97,7 @@ app.get('/api/appointments', (req, res) => {
   const sql = `
     SELECT a.id, a.doctor_id, a.patient_id, a.appointment_date, a.appointment_time,
            a.status, a.reason, a.symptoms, a.patient_phone, a.doctor_code, a.doctor_note,
-           a.booked_at, d.specialty AS doctor_specialty,
+           a.original_date, a.original_time, a.booked_at, d.specialty AS doctor_specialty,
            du.name AS doctor_name, pu.name AS patient_name
     FROM appointments a
     LEFT JOIN doctors d ON a.doctor_id = d.id
@@ -272,7 +277,7 @@ app.post('/api/appointments', (req, res) => {
 });
 
 app.patch('/api/appointments/:id', (req, res) => {
-  const allowedFields = ['status', 'doctor_note', 'appointment_date', 'appointment_time', 'reason', 'symptoms', 'patient_phone'];
+  const allowedFields = ['status', 'doctor_note', 'appointment_date', 'appointment_time', 'reason', 'symptoms', 'patient_phone', 'original_date', 'original_time'];
   const updates = [];
   const params = [];
 
@@ -297,7 +302,7 @@ app.patch('/api/appointments/:id', (req, res) => {
     const selectSql = `
       SELECT a.id, a.doctor_id, a.patient_id, a.appointment_date, a.appointment_time,
              a.status, a.reason, a.symptoms, a.patient_phone, a.doctor_code, a.doctor_note,
-             a.booked_at, d.specialty AS doctor_specialty,
+             a.original_date, a.original_time, a.booked_at, d.specialty AS doctor_specialty,
              du.name AS doctor_name, pu.name AS patient_name
       FROM appointments a
       JOIN doctors d ON a.doctor_id = d.id
@@ -563,6 +568,145 @@ app.get('/api/auth/me', (req, res) => {
   } catch (e) {
     return res.status(401).json({ error: 'Invalid token' });
   }
+});
+
+// Get all reviews for admin
+app.get('/api/reviews', (req, res) => {
+  const sql = `
+    SELECT r.id, r.appointment_id, r.rating, r.comment, r.created_at,
+           a.appointment_date, a.appointment_time, a.status,
+           pu.name AS patient_name, pu.email AS patient_email,
+           du.name AS doctor_name, du.email AS doctor_email, d.specialty AS doctor_specialty
+    FROM reviews r
+    JOIN appointments a ON r.appointment_id = a.id
+    JOIN patients p ON a.patient_id = p.id
+    JOIN users pu ON p.user_id = pu.id
+    JOIN doctors d ON a.doctor_id = d.id
+    JOIN users du ON d.user_id = du.id
+    ORDER BY r.created_at DESC
+  `;
+  db.all(sql, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Rate an appointment (create review)
+app.post('/api/appointments/:id/rate', (req, res) => {
+  const { id } = req.params;
+  const { rating, review } = req.body;
+  
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+  }
+  
+  // First, insert the review
+  const insertSql = `
+    INSERT INTO reviews (appointment_id, rating, comment)
+    VALUES (?, ?, ?)
+  `;
+  
+  db.run(insertSql, [id, rating, review || ''], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    // Get the appointment to find the doctor
+    db.get('SELECT doctor_id FROM appointments WHERE id = ?', [id], (err, appt) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!appt) return res.status(404).json({ error: 'Appointment not found' });
+      
+      // Update doctor's rating
+      db.get('SELECT rating, review_count FROM doctors WHERE id = ?', [appt.doctor_id], (err, doctor) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        const newReviewCount = (doctor.review_count || 0) + 1;
+        const currentRating = doctor.rating || 0;
+        const newRating = ((currentRating * (newReviewCount - 1)) + rating) / newReviewCount;
+        
+        db.run(
+          'UPDATE doctors SET rating = ?, review_count = ? WHERE id = ?',
+          [Math.round(newRating * 10) / 10, newReviewCount, appt.doctor_id],
+          function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true, reviewId: this.lastID });
+          }
+        );
+      });
+    });
+  });
+});
+
+// Admin send notification to user or doctor
+app.post('/api/admin/notify', (req, res) => {
+  const { userId, userType, title, message } = req.body;
+  
+  console.log('[NOTIFY] Sending notification:', { userId, userType, title });
+  
+  if (!userId || !userType || !title || !message) {
+    return res.status(400).json({ error: 'Missing required fields: userId, userType, title, message' });
+  }
+  
+  if (!['doctor', 'patient'].includes(userType)) {
+    return res.status(400).json({ error: 'Invalid userType. Must be "doctor" or "patient"' });
+  }
+  
+  // For now, store notification in a simple table
+  const sql = `
+    INSERT INTO notifications (user_id, user_type, title, message, created_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+  `;
+  
+  db.run(sql, [userId, userType, title, message], function(err) {
+    if (err) {
+      console.error('[NOTIFY] Error inserting notification:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    console.log('[NOTIFY] Notification created with ID:', this.lastID);
+    res.json({ success: true, notificationId: this.lastID });
+  });
+});
+
+// Get notifications for a user
+app.get('/api/notifications/:userId', (req, res) => {
+  const { userId } = req.params;
+  console.log('[NOTIFICATIONS] Fetching notifications for userId:', userId);
+  
+  const sql = `
+    SELECT * FROM notifications
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `;
+  db.all(sql, [userId], (err, rows) => {
+    if (err) {
+      console.error('[NOTIFICATIONS] Error fetching notifications:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    console.log('[NOTIFICATIONS] Found', rows.length, 'notifications for userId:', userId);
+    res.json(rows);
+  });
+});
+
+// Mark notification as read
+app.patch('/api/notifications/:id/read', (req, res) => {
+  const { id } = req.params;
+  const sql = `UPDATE notifications SET is_read = 1 WHERE id = ?`;
+  
+  db.run(sql, [id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Notification not found' });
+    res.json({ success: true });
+  });
+});
+
+// Delete notification
+app.delete('/api/notifications/:id', (req, res) => {
+  const { id } = req.params;
+  const sql = `DELETE FROM notifications WHERE id = ?`;
+  
+  db.run(sql, [id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Notification not found' });
+    res.json({ success: true });
+  });
 });
 
 // Serve React build in production

@@ -132,7 +132,7 @@ export function printAppointment(appt) {
       <title>Appointment - ${appt.doctorName}</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 40px; max-width: 600px; margin: 0 auto; }
-        h1 { color: #00b4a6; border-bottom: 2px solid #00b4a6; padding-bottom: 10px; }
+        h1 { color: #0ea5e9; border-bottom: 2px solid #0ea5e9; padding-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
         td { padding: 10px; border-bottom: 1px solid #ddd; }
         td:first-child { font-weight: bold; width: 40%; color: #666; }
@@ -173,7 +173,7 @@ export function printAppointment(appt) {
  */
 export function generatePDFBlob(appt) {
   const feeDisplay = appt.doctorFee !== undefined && appt.doctorFee !== null ? appt.doctorFee : 'N/A';
-  const feeStyle = appt.doctorFee !== undefined && appt.doctorFee !== null ? 'font-size: 18px; font-weight: bold; color: #00b4a6;' : 'font-size: 18px; font-weight: bold; color: #999;';
+  const feeStyle = appt.doctorFee !== undefined && appt.doctorFee !== null ? 'font-size: 18px; font-weight: bold; color: #0ea5e9;' : 'font-size: 18px; font-weight: bold; color: #999;';
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -183,18 +183,18 @@ export function generatePDFBlob(appt) {
       <title>Appointment - ${appt.doctorName}</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 40px; max-width: 600px; margin: 0 auto; color: #333; }
-        h1 { color: #00b4a6; border-bottom: 3px solid #00b4a6; padding-bottom: 15px; }
+        h1 { color: #0ea5e9; border-bottom: 3px solid #0ea5e9; padding-bottom: 15px; }
         table { width: 100%; border-collapse: collapse; margin: 25px 0; }
         td { padding: 12px; border-bottom: 1px solid #e0e0e0; }
         td:first-child { font-weight: bold; width: 35%; color: #666; background: #f9f9f9; }
         .header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
-        .logo { width: 50px; height: 50px; background: #00b4a6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+        .logo { width: 50px; height: 50px; background: #0ea5e9; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
         .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0; text-align: center; color: #999; font-size: 12px; }
         .status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
-        .status.pending { background: #fff3cd; color: #856404; }
-        .status.accepted { background: #d4edda; color: #155724; }
-        .status.completed { background: #d1ecf1; color: #0c5460; }
-        .status.cancelled { background: #f8d7da; color: #721c24; }
+        .status.pending { background: #fef3c7; color: #92400e; }
+        .status.accepted { background: #d1fae5; color: #065f46; }
+        .status.completed { background: #e0f2fe; color: #0369a1; }
+        .status.cancelled { background: #fee2e2; color: #991b1b; }
       </style>
     </head>
     <body>
@@ -215,7 +215,7 @@ export function generatePDFBlob(appt) {
         <tr><td>Consultation Fee</td><td style="${feeStyle}">₹${feeDisplay}</td></tr>
         ${appt.reason ? `<tr><td>Reason for Visit</td><td>${appt.reason}</td></tr>` : ''}
         ${appt.symptoms ? `<tr><td>Symptoms</td><td>${appt.symptoms}</td></tr>` : ''}
-        ${appt.doctorNote ? `<tr><td>Doctor's Note</td><td style="color: #00b4a6;">${appt.doctorNote}</td></tr>` : ''}
+        ${appt.doctorNote ? `<tr><td>Doctor's Note</td><td style="color: #0ea5e9;">${appt.doctorNote}</td></tr>` : ''}
         <tr><td>Booking Date</td><td>${new Date(appt.bookedAt).toLocaleString('en-IN')}</td></tr>
         <tr><td>Appointment ID</td><td><code>${appt.id}</code></td></tr>
       </table>

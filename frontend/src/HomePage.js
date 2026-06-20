@@ -163,8 +163,8 @@ export default function HomePage({ setPage }) {
             <Btn variant="outline" onClick={()=>setPage('appointments')} style={{ width:'100%', justifyContent:'center', padding:13 }}>📋 My Appointments</Btn>
             <Btn variant="ghost" onClick={()=>setPage('profile')} style={{ width:'100%', justifyContent:'center', padding:13 }}>👤 Edit Profile</Btn>
           </div>
-          <div style={{ marginTop:16, padding:12, background:'rgba(0,180,166,0.07)', borderRadius:10, border:'1px solid rgba(0,180,166,0.18)' }}>
-            <p style={{ fontSize:12, color:'var(--text-light)', lineHeight:1.6 }}>💡 <strong style={{ color:'var(--white)' }}>Tip:</strong> After your appointment is completed, you can rate your doctor and share your experience!</p>
+          <div className="callout" style={{ marginTop: 16 }}>
+            <p>💡 <strong>Tip:</strong> After your appointment is completed, you can rate your doctor and share your experience!</p>
           </div>
         </Card>
       </div>

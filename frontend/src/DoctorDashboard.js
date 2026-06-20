@@ -28,7 +28,7 @@ export function DoctorHome({ setPage }) {
   return (
     <div style={{ padding:'28px 32px', animation:'fadeIn 0.35s ease' }}>
       {doc && (
-        <Card style={{ marginBottom:28, display:'flex', gap:18, alignItems:'center', background:'linear-gradient(135deg,rgba(0,180,166,0.1) 0%,var(--card-bg) 100%)', flexWrap:'wrap' }}>
+        <Card style={{ marginBottom:28, display:'flex', gap:18, alignItems:'center', background:'linear-gradient(135deg, var(--color-accent-subtle) 0%, var(--card-bg) 100%)', flexWrap:'wrap' }}>
           <Avatar name={doc.name} size={60} photo={doc.photo} />
           <div style={{ flex:1 }}>
             <h2 style={{ fontSize:22, marginBottom:2 }}>{doc.name}</h2>
@@ -392,8 +392,8 @@ export function DoctorSchedule() {
           return (
             <button key={d} onClick={()=>setSelDate(d)} style={{
               minWidth:62, padding:'10px 8px', borderRadius:11, cursor:'pointer', textAlign:'center', flexShrink:0,
-              background: isSel ? 'var(--teal)' : isToday ? 'rgba(0,180,166,0.1)' : 'var(--card-bg)',
-              border: `1.5px solid ${isSel ? 'var(--teal)' : isToday ? 'rgba(0,180,166,0.4)' : 'var(--border)'}`,
+              background: isSel ? 'var(--color-primary)' : isToday ? 'var(--color-primary-subtle)' : 'var(--card-bg)',
+              border: `1.5px solid ${isSel ? 'var(--color-primary)' : isToday ? 'var(--color-primary-border)' : 'var(--border)'}`,
               color: isSel ? 'var(--navy)' : 'var(--text-primary)',
             }}>
               <div style={{ fontSize:11, marginBottom:2, opacity:0.8 }}>{dt.toLocaleDateString('en-IN',{weekday:'short'})}</div>
@@ -423,7 +423,7 @@ export function DoctorSchedule() {
                 border: a.original_date ? '1px solid rgba(251,191,36,0.3)' : undefined,
                 background: a.original_date ? 'linear-gradient(135deg, var(--card-bg) 0%, rgba(251,191,36,0.03) 100%)' : undefined,
               }}>
-                <div style={{ background:'rgba(0,180,166,0.1)', borderRadius:10, padding:'10px 14px', textAlign:'center', minWidth:60 }}>
+                <div style={{ background:'var(--color-primary-subtle)', borderRadius:10, padding:'10px 14px', textAlign:'center', minWidth:60 }}>
                   <p style={{ fontSize:15, fontWeight:700, color:'var(--teal)' }}>{a.slot}</p>
                 </div>
                 <Avatar name={a.patientName} size={42} />

@@ -38,12 +38,7 @@ class ErrorBoundary extends React.Component {
 
       // Default error UI
       return (
-        <Card style={{ 
-          margin: '20px', 
-          padding: '30px',
-          border: '1px solid rgba(224,92,92,0.3)',
-          background: 'rgba(224,92,92,0.05)'
-        }}>
+        <Card danger className="" style={{ margin: '20px', padding: '30px' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 64, marginBottom: 16 }}>⚠️</div>
             <h2 style={{ fontSize: 22, marginBottom: 8, color: 'var(--danger)' }}>
@@ -67,7 +62,7 @@ class ErrorBoundary extends React.Component {
                 <summary style={{ cursor: 'pointer', fontWeight: 600, marginBottom: 8 }}>
                   Error Details (Development)
                 </summary>
-                <pre style={{ margin: 0, color: '#ff6b6b' }}>
+                <pre style={{ margin: 0, color: 'var(--color-danger)' }}>
                   {this.state.error.stack}
                 </pre>
               </details>

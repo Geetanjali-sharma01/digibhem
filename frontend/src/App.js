@@ -53,16 +53,11 @@ function Main() {
   const currentPage = pages[page] || (isAdmin ? adminPages['admin'] : isDoctor ? doctorPages['doctor-home'] : patientPages['home']);
 
   return (
-    <div style={{ display:'flex', minHeight:'100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Nav page={page} setPage={setPage} />
-      <main style={{ flex:1, marginLeft:220, minHeight:'100vh', overflowY:'auto' }} className="main-content">
+      <main className="main-content">
         {currentPage}
       </main>
-      <style>{`
-        @media(max-width:768px){
-          .main-content{ margin-left:0 !important; padding-top:58px; }
-        }
-      `}</style>
     </div>
   );
 }

@@ -56,7 +56,7 @@ export default function DoctorsPage() {
         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or specialty…"
-            style={{ width: '100%', padding: '10px 14px 10px 36px', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, color: '#fff', fontSize: 14 }} />
+            style={{ width: '100%', padding: '10px 14px 10px 36px', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--color-text)', fontSize: 14 }} />
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {specialties.map(s => (
@@ -119,7 +119,7 @@ export default function DoctorsPage() {
                   <button key={d} onClick={() => { setDate(d); setSlot(''); }} style={{
                     padding: '8px 14px', borderRadius: 9, fontSize: 13, cursor: 'pointer',
                     background: date === d ? 'var(--teal)' : 'rgba(255,255,255,0.06)',
-                    color: date === d ? 'var(--navy)' : 'var(--white)',
+                    color: date === d ? 'var(--color-text-inverse)' : 'var(--color-text)',
                     border: `1px solid ${date === d ? 'var(--teal)' : 'var(--border)'}`,
                     fontWeight: date === d ? 600 : 400,
                   }}>{new Date(d).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}</button>
@@ -134,7 +134,7 @@ export default function DoctorsPage() {
                     <button key={s} onClick={() => setSlot(s)} style={{
                       padding: '8px 14px', borderRadius: 9, fontSize: 13, cursor: 'pointer',
                       background: slot === s ? 'var(--teal)' : 'rgba(255,255,255,0.06)',
-                      color: slot === s ? 'var(--navy)' : 'var(--white)',
+                      color: slot === s ? 'var(--color-text-inverse)' : 'var(--color-text)',
                       border: `1px solid ${slot === s ? 'var(--teal)' : 'var(--border)'}`,
                       fontWeight: slot === s ? 600 : 400,
                     }}>{s}</button>
@@ -151,7 +151,7 @@ export default function DoctorsPage() {
 
         {selected && step === 2 && (
           <div>
-            <div style={{ background: 'rgba(0,180,166,0.07)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, border: '1px solid var(--border)' }}>
+            <div className="callout" style={{ marginBottom: 20 }}>
               <p style={{ fontWeight: 600 }}>{selected.name}</p>
               <p style={{ fontSize: 13, color: 'var(--text-light)' }}>{new Date(date).toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })} at {slot}</p>
               <p style={{ fontSize: 13, color: 'var(--teal)', marginTop: 4 }}>Consultation fee: ₹{selected.fee}</p>
@@ -161,7 +161,7 @@ export default function DoctorsPage() {
               <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Describe your symptoms or reason for visit…"
                 rows={4} style={{
                   width: '100%', padding: '11px 14px', background: 'rgba(255,255,255,0.06)',
-                  border: '1.5px solid rgba(255,255,255,0.12)', borderRadius: 9, color: '#fff', resize: 'none', fontSize: 14,
+                  border: '1.5px solid var(--color-surface-border)', borderRadius: 9, color: 'var(--color-text)', resize: 'none', fontSize: 14,
                 }} />
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -178,7 +178,7 @@ export default function DoctorsPage() {
             </div>
             <h3 style={{ fontSize: 20, marginBottom: 8 }}>Appointment Booked!</h3>
             <p style={{ color: 'var(--text-light)', marginBottom: 20, fontSize: 14 }}>Your appointment has been confirmed</p>
-            <div style={{ background: 'rgba(0,180,166,0.07)', borderRadius: 10, padding: 16, border: '1px solid var(--border)', textAlign: 'left', marginBottom: 24 }}>
+            <div className="callout" style={{ textAlign: 'left', marginBottom: 24, padding: 16 }}>
               <p style={{ fontWeight: 600 }}>{booked.doctorName}</p>
               <p style={{ fontSize: 13, color: 'var(--text-light)' }}>{booked.doctorSpecialty}</p>
               <p style={{ fontSize: 13, marginTop: 8 }}>{new Date(booked.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at {booked.slot}</p>

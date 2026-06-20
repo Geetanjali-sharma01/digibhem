@@ -127,7 +127,7 @@ export default function BookingPage({ setPage }) {
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
               <div style={{ width:32, height:32, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700,
                 background: step > i+1 ? 'var(--success)' : step === i+1 ? 'var(--teal)' : 'var(--surface)',
-                color: step > i+1 ? '#ffffff' : step === i+1 ? 'var(--navy)' : 'var(--text-light)',
+                color: step > i+1 ? 'var(--color-text-on-primary)' : step === i+1 ? 'var(--color-text-inverse)' : 'var(--color-text-muted)',
                 border: step === i+1 ? 'none' : '1.5px solid var(--surface-border)',
                 transition:'all 0.3s',
               }}>
@@ -180,7 +180,7 @@ export default function BookingPage({ setPage }) {
                         gap: 10,
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,180,166,0.1)'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-primary-subtle)'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                       <Avatar name={doc.name} size={36} photo={doc.photo} />
@@ -291,7 +291,7 @@ export default function BookingPage({ setPage }) {
                     <button key={d} onClick={() => { setSelDate(d); setSelSlot(''); }} style={{
                       padding:'12px 18px', borderRadius:11, cursor:'pointer', textAlign:'center', minWidth:100,
                       background: isSelected ? 'var(--teal)' : 'var(--card-bg)',
-                      color: isSelected ? 'var(--navy)' : 'var(--white)',
+                      color: isSelected ? 'var(--color-text-inverse)' : 'var(--color-text)',
                       border: `1.5px solid ${isSelected ? 'var(--teal)' : 'var(--border)'}`,
                       fontWeight: isSelected ? 700 : 400, transition:'all 0.2s',
                     }}>
@@ -403,7 +403,7 @@ export default function BookingPage({ setPage }) {
         <div style={{ textAlign:'center', padding:'20px 0' }}>
           <div style={{ fontSize:70, marginBottom:16 }}>🎉</div>
           <h2 style={{ fontSize:26, marginBottom:8 }}>Booking Request Sent!</h2>
-          <p style={{ color:'var(--text-light)', marginBottom:24, fontSize:15 }}>Waiting for <strong style={{ color:'var(--white)' }}>{booked.doctorName}</strong> to confirm your appointment.</p>
+          <p className="text-muted" style={{ marginBottom: 24, fontSize: 15 }}>Waiting for <strong style={{ color: 'var(--color-text)' }}>{booked.doctorName}</strong> to confirm your appointment.</p>
           <Card style={{ maxWidth:400, margin:'0 auto 28px', textAlign:'left' }}>
             {[['Date', fmt(booked.date)], ['Time', booked.slot], ['Status', '⏳ Pending confirmation']].map(([k,v]) => (
               <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'9px 0', borderBottom:'1px solid var(--border)' }}>

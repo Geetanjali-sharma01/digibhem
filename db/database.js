@@ -20,8 +20,15 @@ const DOCTOR_SPECIALTY_MAP = {
   'malhotra@medibook.com': 'Endocrinologist',
   'bose@medibook.com':     'Pulmonologist',
   'kapoor@medibook.com':   'Rheumatologist',
+  'sundaram@medibook.com': 'Urologist',
+  'rao@medibook.com':      'Gynecologist',
+  'verma@medibook.com':    'Plastic Surgeon',
+  'singh@medibook.com':    'Radiologist',
+  'khanna@medibook.com':   'Pain Management',
+  'anjalimehta@medibook.com': 'Pediatric Neurologist',
+  'shah@medibook.com':     'ENT & Head Neck Surgeon',
 };
-const FALLBACK_SPECIALTIES = ['Cardiologist', 'Neurologist', 'Dermatologist', 'Orthopedic', 'Pediatrician', 'General Physician', 'ENT Specialist', 'Ophthalmologist', 'Psychiatrist', 'Gastroenterologist', 'Endocrinologist', 'Pulmonologist', 'Rheumatologist'];
+const FALLBACK_SPECIALTIES = ['Cardiologist', 'Neurologist', 'Dermatologist', 'Orthopedic', 'Pediatrician', 'General Physician', 'ENT Specialist', 'Ophthalmologist', 'Psychiatrist', 'Gastroenterologist', 'Endocrinologist', 'Pulmonologist', 'Rheumatologist', 'Urologist', 'Gynecologist', 'Plastic Surgeon', 'Radiologist', 'Pain Management', 'Pediatric Neurologist', 'ENT & Head Neck Surgeon'];
 
 // Pre-seeded doctor accounts (always created on init so bookings work on fresh DBs)
 const SEED_DOCTOR_ACCOUNTS = [
@@ -38,6 +45,13 @@ const SEED_DOCTOR_ACCOUNTS = [
   { name: 'Dr. Pooja Malhotra',  email: 'malhotra@medibook.com', password: 'doctor123' },
   { name: 'Dr. Arnab Bose',      email: 'bose@medibook.com',     password: 'doctor123' },
   { name: 'Dr. Simran Kapoor',   email: 'kapoor@medibook.com',   password: 'doctor123' },
+  { name: 'Dr. Karthik Sundaram', email: 'sundaram@medibook.com', password: 'doctor123' },
+  { name: 'Dr. Deepa Rao',       email: 'rao@medibook.com',      password: 'doctor123' },
+  { name: 'Dr. Aditya Verma',    email: 'verma@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Meera Singh',     email: 'singh@medibook.com',    password: 'doctor123' },
+  { name: 'Dr. Rajesh Khanna',   email: 'khanna@medibook.com',   password: 'doctor123' },
+  { name: 'Dr. Anjali Mehta',    email: 'anjalimehta@medibook.com', password: 'doctor123' },
+  { name: 'Dr. Vikram Shah',     email: 'shah@medibook.com',     password: 'doctor123' },
 ];
 
 // Pre-seeded admin account
@@ -83,12 +97,13 @@ const APPOINTMENTS_SQL = `
     booked_at TEXT DEFAULT CURRENT_TIMESTAMP,
     doctor_code TEXT,
     doctor_note TEXT,
+    original_date TEXT,
+    original_time TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
     FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE
   )
 `;
-
 const REVIEWS_SQL = `
   CREATE TABLE IF NOT EXISTS reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,6 +114,71 @@ const REVIEWS_SQL = `
     FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
   )
 `;
+
+const NOTIFICATIONS_SQL = `
+  CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    user_type TEXT NOT NULL CHECK(user_type IN ('doctor', 'patient')),
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    is_read INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`;
+
+/**
+ * Add missing columns to existing tables (for older database versions)
+ */
+function runColumnMigrations(done) {
+  console.log('[migration] Checking for missing columns...');
+  
+  // Check if original_date column exists in appointments table
+  db.all("PRAGMA table_info(appointments)", [], (err, rows) => {
+    if (err) {
+      console.error('[migration] Error checking appointments table:', err);
+      return done();
+    }
+    
+    const columns = rows.map(row => row.name);
+    const migrations = [];
+    
+    if (!columns.includes('original_date')) {
+      migrations.push((cb) => {
+        db.run("ALTER TABLE appointments ADD COLUMN original_date TEXT", (err) => {
+          if (!err) console.log('[migration] Added original_date column to appointments');
+          cb(err);
+        });
+      });
+    }
+    
+    if (!columns.includes('original_time')) {
+      migrations.push((cb) => {
+        db.run("ALTER TABLE appointments ADD COLUMN original_time TEXT", (err) => {
+          if (!err) console.log('[migration] Added original_time column to appointments');
+          cb(err);
+        });
+      });
+    }
+    
+    if (migrations.length === 0) {
+      console.log('[migration] No column migrations needed');
+      return done();
+    }
+    
+    // Run migrations sequentially
+    let index = 0;
+    const runNext = () => {
+      if (index >= migrations.length) return done();
+      migrations[index]((err) => {
+        if (err) console.error('[migration] Error:', err);
+        index++;
+        runNext();
+      });
+    };
+    runNext();
+  });
+}
 
 const initDb = (onReady) => {
   db.serialize(() => {
@@ -136,24 +216,29 @@ const initDb = (onReady) => {
         db.run(DOCTORS_SQL);
         db.run(PATIENTS_SQL);
         db.run(APPOINTMENTS_SQL);
-        db.run(REVIEWS_SQL, [], (createErr) => {
+        db.run(REVIEWS_SQL);
+        db.run(NOTIFICATIONS_SQL, [], (createErr) => {
           if (createErr) {
             console.error('Error creating tables:', createErr);
             if (onReady) onReady(createErr);
             return;
           }
-          // Seed doctor/admin user accounts first, then create doctors/patients rows
-          ensureSeedUsers(() => {
-            seedDoctorsAndPatients(() => {
-              // Run migration to add any missing doctors to persistent DBs
-              console.log('[migration] Starting migration to ensure all 13 doctors exist...');
-              migrateNewDoctors(() => {
-                // Verify final count
-                db.get('SELECT COUNT(*) as count FROM doctors', [], (countErr, countRow) => {
-                  if (!countErr) {
-                    console.log(`[migration] Total doctors in database: ${countRow.count}`);
-                  }
-                  if (onReady) onReady(null);
+          
+          // Run migrations to add missing columns to existing tables
+          runColumnMigrations(() => {
+            // Seed doctor/admin user accounts first, then create doctors/patients rows
+            ensureSeedUsers(() => {
+              seedDoctorsAndPatients(() => {
+                // Run migration to add any missing doctors to persistent DBs
+                console.log('[migration] Starting migration to ensure all 13 doctors exist...');
+                migrateNewDoctors(() => {
+                  // Verify final count
+                  db.get('SELECT COUNT(*) as count FROM doctors', [], (countErr, countRow) => {
+                    if (!countErr) {
+                      console.log(`[migration] Total doctors in database: ${countRow.count}`);
+                    }
+                    if (onReady) onReady(null);
+                  });
                 });
               });
             });
@@ -385,4 +470,4 @@ function ensureDoctorRow(userId, email, cb) {
   });
 }
 
-module.exports = { db, initDb, ensurePatientRow, ensureDoctorRow };
+module.exports = { db, initDb, ensurePatientRow, ensureDoctorRow, runColumnMigrations };
