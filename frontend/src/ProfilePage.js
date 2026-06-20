@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from './AppContext';
 import { Card, Btn, Input, Avatar, Toast } from './components';
+import { calculateAge } from './utils';
 
 function DropdownField({ label, value, options, onChange, error, placeholder }) {
   const [open, setOpen] = useState(false);
@@ -180,7 +181,7 @@ export default function ProfilePage() {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           {[
-            { title:'Personal Info', items:[['Full Name',user?.name],['Email',user?.email],['Phone',user?.phone||'—'],['Date of Birth',user?.dob||'—'],['Gender',user?.gender||'—'],['Address',user?.address||'—']] },
+            { title:'Personal Info', items:[['Full Name',user?.name],['Email',user?.email],['Phone',user?.phone||'—'],['Date of Birth',user?.dob||'—'],['Age',calculateAge(user?.dob) ? `${calculateAge(user?.dob)} years` : '—'],['Gender',user?.gender||'—'],['Address',user?.address||'—']] },
             { title:'Medical Info', items:[['Blood Group',user?.blood||'—'],['Known Allergies',user?.allergies||'—'],['Medical History',user?.medHistory || user?.medical_info || '—']] },
           ].map(section => (
             <Card key={section.title}>

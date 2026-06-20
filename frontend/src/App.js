@@ -6,8 +6,10 @@ import HomePage from './HomePage';
 import BookingPage from './BookingPage';
 import AppointmentsPage from './AppointmentsPage';
 import ProfilePage from './ProfilePage';
+import NotificationsPage from './NotificationsPage';
 import AdminPage from './AdminPage';
 import { DoctorHome, DoctorRequests, DoctorSchedule, DoctorProfilePage } from './DoctorDashboard';
+import ErrorBoundary from './ErrorBoundary';
 
 function Main() {
   const { user } = useApp();
@@ -34,6 +36,7 @@ function Main() {
     'home':         <HomePage setPage={setPage} />,
     'booking':      <BookingPage setPage={setPage} />,
     'appointments': <AppointmentsPage setPage={setPage} />,
+    'notifications': <NotificationsPage />,
     'profile':      <ProfilePage />,
   };
 
@@ -41,6 +44,7 @@ function Main() {
     'doctor-home':     <DoctorHome setPage={setPage} />,
     'doctor-requests': <DoctorRequests />,
     'doctor-schedule': <DoctorSchedule />,
+    'doctor-notifications': <NotificationsPage />,
     'doctor-profile':  <DoctorProfilePage />,
   };
 
@@ -66,7 +70,9 @@ function Main() {
 export default function App() {
   return (
     <AppProvider>
-      <Main />
+      <ErrorBoundary>
+        <Main />
+      </ErrorBoundary>
     </AppProvider>
   );
 }

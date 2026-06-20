@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from './AppContext';
 import { Card, Btn, Badge, Avatar, Modal, Input, Toast } from './components';
 import { Search, Star, Clock, DollarSign, Filter, Calendar, CheckCircle } from 'lucide-react';
@@ -15,6 +15,14 @@ export default function DoctorsPage() {
   const [toast, setToast] = useState(null);
   const [booked, setBooked] = useState(null);
 
+  // Handle "View Doctor" from appointments page
+  useEffect(() => {
+    if (window._viewDoctorProfile) {
+      setSelected(window._viewDoctorProfile);
+      delete window._viewDoctorProfile;
+    }
+  }, []);
+
   const specialties = ['All', ...new Set(DOCTORS.map(d => d.specialty))];
   const filtered = DOCTORS.filter(d =>
     (specialty === 'All' || d.specialty === specialty) &&
@@ -24,10 +32,14 @@ export default function DoctorsPage() {
   const dates = selected ? Object.keys(selected.slots).sort() : [];
   const slots = selected && date ? (selected.slots[date] || []) : [];
 
-  const handleBook = () => {
-    const appt = bookAppointment(selected.id, date, slot, reason);
-    setBooked(appt);
-    setStep(3);
+  const handleBook = async () => {
+    try {
+      const appt = await bookAppointment({ doctorId: selected.id, date, slot, reason, symptoms: '' });
+      setBooked(appt);
+      setStep(3);
+    } catch (err) {
+      setToast({ msg: err.message || 'Booking failed', type: 'error' });
+    }
   };
 
   const closeModal = () => { setSelected(null); setStep(1); setDate(''); setSlot(''); setReason(''); setBooked(null); };
@@ -65,7 +77,7 @@ export default function DoctorsPage() {
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.4)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
             <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
-              <Avatar name={doc.name} size={52} />
+              <Avatar name={doc.name} size={52} photo={doc.photo} />
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: 16, fontFamily: 'DM Sans', fontWeight: 700 }}>{doc.name}</h3>
                 <p style={{ fontSize: 13, color: 'var(--teal)', fontWeight: 500 }}>{doc.specialty}</p>
@@ -167,8 +179,8 @@ export default function DoctorsPage() {
             <h3 style={{ fontSize: 20, marginBottom: 8 }}>Appointment Booked!</h3>
             <p style={{ color: 'var(--text-light)', marginBottom: 20, fontSize: 14 }}>Your appointment has been confirmed</p>
             <div style={{ background: 'rgba(0,180,166,0.07)', borderRadius: 10, padding: 16, border: '1px solid var(--border)', textAlign: 'left', marginBottom: 24 }}>
-              <p style={{ fontWeight: 600 }}>{booked.doctor.name}</p>
-              <p style={{ fontSize: 13, color: 'var(--text-light)' }}>{booked.specialty}</p>
+              <p style={{ fontWeight: 600 }}>{booked.doctorName}</p>
+              <p style={{ fontSize: 13, color: 'var(--text-light)' }}>{booked.doctorSpecialty}</p>
               <p style={{ fontSize: 13, marginTop: 8 }}>{new Date(booked.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at {booked.slot}</p>
             </div>
             <Btn onClick={closeModal} style={{ width: '100%' }}>Done</Btn>

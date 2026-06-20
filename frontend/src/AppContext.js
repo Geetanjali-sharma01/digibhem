@@ -3,34 +3,64 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AppContext = createContext(null);
 const DEFAULT_THEME = 'dark';
 
-// Generate next 14 days of slots dynamically
-function genSlots(daysOffOn = [], slotSets = ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00']) {
+// Generate next 14 days of slots dynamically (starting from today, excluding past dates)
+// 10 slots per day with 30-minute gaps
+function genSlots(daysOffOn = [], slotSets = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30']) {
   const slots = {};
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // Start from today (i=0) and generate slots for next 14 days
   for (let i = 0; i < 14; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     const dow = d.getDay();
     if (daysOffOn.includes(dow)) continue;
     const key = d.toISOString().split('T')[0];
-    slots[key] = [...slotSets];
+    
+    // Only generate slots for today and future dates
+    if (key < todayStr) continue; // Skip past dates
+    
+    // For today's date, filter out past time slots
+    if (key === todayStr) {
+      const availableSlots = slotSets.filter(slot => {
+        const [hour, minute] = slot.split(':').map(Number);
+        // Slot is available if it's after current time
+        return hour > currentHour || (hour === currentHour && minute > currentMinute);
+      });
+      if (availableSlots.length > 0) {
+        slots[key] = availableSlots;
+      }
+    } else {
+      slots[key] = [...slotSets];
+    }
   }
   return slots;
 }
 
 export const DOCTORS_DATA = [
-  { id: 'd1',  name: 'Dr. Priya Sharma',    specialty: 'Cardiologist',         experience: '14 yrs', ratingSum: 44, ratingCount: 9,  fee: 800, available: true,  qualification: 'MBBS, MD (Cardiology), DM',        hospital: 'Apollo Hospital',        slots: genSlots([0,6], ['09:00','10:00','11:00','14:00','15:00','16:00']) },
-  { id: 'd2',  name: 'Dr. Arjun Mehta',     specialty: 'Neurologist',          experience: '10 yrs', ratingSum: 37, ratingCount: 8,  fee: 700, available: true,  qualification: 'MBBS, MD, DM (Neurology)',         hospital: 'Fortis Hospital',        slots: genSlots([0,5], ['08:00','09:30','11:00','13:00','15:00','16:30']) },
-  { id: 'd3',  name: 'Dr. Sneha Kulkarni',  specialty: 'Dermatologist',        experience: '8 yrs',  ratingSum: 48, ratingCount: 10, fee: 600, available: true,  qualification: 'MBBS, DVD, DNB',                  hospital: 'Ruby Hall Clinic',       slots: genSlots([0], ['10:00','11:30','13:00','14:00','16:00','17:00']) },
-  { id: 'd4',  name: 'Dr. Rohit Patil',     specialty: 'Orthopedic',           experience: '12 yrs', ratingSum: 32, ratingCount: 7,  fee: 750, available: true,  qualification: 'MBBS, MS (Ortho)',                 hospital: 'Sahyadri Hospital',      slots: genSlots([0,6], ['09:00','11:00','13:00','14:00','16:00']) },
-  { id: 'd5',  name: 'Dr. Anita Desai',     specialty: 'Pediatrician',         experience: '16 yrs', ratingSum: 49, ratingCount: 10, fee: 650, available: true,  qualification: 'MBBS, MD (Pediatrics)',            hospital: 'KEM Hospital',           slots: genSlots([0], ['08:30','10:00','11:30','13:00','14:30','16:00']) },
-  { id: 'd6',  name: 'Dr. Vikram Joshi',    specialty: 'General Physician',    experience: '9 yrs',  ratingSum: 40, ratingCount: 9,  fee: 500, available: true,  qualification: 'MBBS, MD',                         hospital: 'City Care Clinic',       slots: genSlots([6], ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00']) },
-  { id: 'd7',  name: 'Dr. Kavya Nair',      specialty: 'ENT Specialist',       experience: '7 yrs',  ratingSum: 38, ratingCount: 8,  fee: 550, available: true,  qualification: 'MBBS, MS (ENT)',                   hospital: 'AIIMS Delhi',            slots: genSlots([0,3], ['09:00','10:30','12:00','14:00','15:30']) },
-  { id: 'd8',  name: 'Dr. Suresh Reddy',    specialty: 'Ophthalmologist',      experience: '11 yrs', ratingSum: 43, ratingCount: 9,  fee: 680, available: true,  qualification: 'MBBS, MS (Ophthalmology)',         hospital: 'LV Prasad Eye Institute', slots: genSlots([0,6], ['10:00','11:00','13:00','14:00','16:00']) },
-  { id: 'd9',  name: 'Dr. Neha Gupta',      specialty: 'Psychiatrist',         experience: '6 yrs',  ratingSum: 35, ratingCount: 7,  fee: 900, available: true,  qualification: 'MBBS, MD (Psychiatry)',            hospital: 'NIMHANS',                slots: genSlots([0,6], ['11:00','12:00','14:00','15:00','16:00']) },
-  { id: 'd10', name: 'Dr. Rajan Iyer',      specialty: 'Gastroenterologist',   experience: '13 yrs', ratingSum: 46, ratingCount: 9,  fee: 850, available: true,  qualification: 'MBBS, MD, DM (Gastroenterology)', hospital: 'Medanta Hospital',       slots: genSlots([0,5], ['09:30','11:00','13:30','15:00','16:30']) },
-  { id: 'd11', name: 'Dr. Pooja Malhotra',  specialty: 'Endocrinologist',      experience: '10 yrs', ratingSum: 41, ratingCount: 8,  fee: 750, available: true,  qualification: 'MBBS, MD, DM (Endocrinology)',    hospital: 'Max Hospital',           slots: genSlots([0,3], ['09:00','10:30','12:00','14:30','16:00']) },
-  { id: 'd12', name: 'Dr. Arnab Bose',      specialty: 'Pulmonologist',        experience: '15 yrs', ratingSum: 50, ratingCount: 10, fee: 780, available: true,  qualification: 'MBBS, MD (Pulmonology)',           hospital: 'PGI Chandigarh',         slots: genSlots([0,6], ['08:00','09:30','11:00','14:00','15:30']) },
-  { id: 'd13', name: 'Dr. Simran Kapoor',   specialty: 'Rheumatologist',       experience: '8 yrs',  ratingSum: 36, ratingCount: 7,  fee: 720, available: true,  qualification: 'MBBS, MD, DM (Rheumatology)',     hospital: 'Sir Ganga Ram Hospital', slots: genSlots([0,5], ['10:00','11:30','13:00','14:30','16:00']) },
+  { id: 'd1',  name: 'Dr. Priya Sharma',    specialty: 'Cardiologist',         experience: '14 yrs', ratingSum: 44, ratingCount: 9,  fee: 800, available: true,  qualification: 'MBBS, MD (Cardiology), DM',        hospital: 'Apollo Hospital',        slots: genSlots([0,6], ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd2',  name: 'Dr. Arjun Mehta',     specialty: 'Neurologist',          experience: '10 yrs', ratingSum: 37, ratingCount: 8,  fee: 700, available: true,  qualification: 'MBBS, MD, DM (Neurology)',         hospital: 'Fortis Hospital',        slots: genSlots([0,5], ['08:00','08:30','09:00','09:30','10:00','10:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd3',  name: 'Dr. Sneha Kulkarni',  specialty: 'Dermatologist',        experience: '8 yrs',  ratingSum: 48, ratingCount: 10, fee: 600, available: true,  qualification: 'MBBS, DVD, DNB',                  hospital: 'Ruby Hall Clinic',       slots: genSlots([0], ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd4',  name: 'Dr. Rohit Patil',     specialty: 'Orthopedic',           experience: '12 yrs', ratingSum: 32, ratingCount: 7,  fee: 750, available: true,  qualification: 'MBBS, MS (Ortho)',                 hospital: 'Sahyadri Hospital',      slots: genSlots([0,6], ['08:30','09:00','09:30','10:00','10:30','11:00','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd5',  name: 'Dr. Anita Desai',     specialty: 'Pediatrician',         experience: '16 yrs', ratingSum: 49, ratingCount: 10, fee: 650, available: true,  qualification: 'MBBS, MD (Pediatrics)',            hospital: 'KEM Hospital',           slots: genSlots([0], ['08:00','08:30','09:00','09:30','10:00','10:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1651008325769-3c2b0e58885e?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd6',  name: 'Dr. Vikram Joshi',    specialty: 'General Physician',    experience: '9 yrs',  ratingSum: 40, ratingCount: 9,  fee: 500, available: true,  qualification: 'MBBS, MD',                         hospital: 'City Care Clinic',       slots: genSlots([6], ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30']), photo: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd7',  name: 'Dr. Kavya Nair',      specialty: 'ENT Specialist',       experience: '7 yrs',  ratingSum: 38, ratingCount: 8,  fee: 550, available: true,  qualification: 'MBBS, MS (ENT)',                   hospital: 'AIIMS Delhi',            slots: genSlots([0,3], ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1527613426441-4da17471b66d?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd8',  name: 'Dr. Suresh Reddy',    specialty: 'Ophthalmologist',      experience: '11 yrs', ratingSum: 43, ratingCount: 9,  fee: 680, available: true,  qualification: 'MBBS, MS (Ophthalmology)',         hospital: 'LV Prasad Eye Institute', slots: genSlots([0,6], ['08:30','09:00','09:30','10:00','10:30','11:00','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1582750433449-648e13861488?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd9',  name: 'Dr. Neha Gupta',      specialty: 'Psychiatrist',         experience: '6 yrs',  ratingSum: 35, ratingCount: 7,  fee: 900, available: true,  qualification: 'MBBS, MD (Psychiatry)',            hospital: 'NIMHANS',                slots: genSlots([0,6], ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1651008371780-694490b2c8e3?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd10', name: 'Dr. Rajan Iyer',      specialty: 'Gastroenterologist',   experience: '13 yrs', ratingSum: 46, ratingCount: 9,  fee: 850, available: true,  qualification: 'MBBS, MD, DM (Gastroenterology)', hospital: 'Medanta Hospital',       slots: genSlots([0,5], ['08:00','08:30','09:00','09:30','10:00','10:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1612531386530-9ee613b7a3ee?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd11', name: 'Dr. Pooja Malhotra',  specialty: 'Endocrinologist',      experience: '10 yrs', ratingSum: 41, ratingCount: 8,  fee: 750, available: true,  qualification: 'MBBS, MD, DM (Endocrinology)',    hospital: 'Max Hospital',           slots: genSlots([0,3], ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1550608479-13c63ca5434c?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd12', name: 'Dr. Arnab Bose',      specialty: 'Pulmonologist',        experience: '15 yrs', ratingSum: 50, ratingCount: 10, fee: 780, available: true,  qualification: 'MBBS, MD (Pulmonology)',           hospital: 'PGI Chandigarh',         slots: genSlots([0,6], ['08:00','08:30','09:00','09:30','10:00','10:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1549488498-2b9e54975b36?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd13', name: 'Dr. Simran Kapoor',   specialty: 'Rheumatologist',       experience: '8 yrs',  ratingSum: 36, ratingCount: 7,  fee: 720, available: true,  qualification: 'MBBS, MD, DM (Rheumatology)',     hospital: 'Sir Ganga Ram Hospital', slots: genSlots([0,5], ['08:30','09:00','09:30','10:00','10:30','11:00','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1594824475470-4b4761950568?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd14', name: 'Dr. Karthik Sundaram', specialty: 'Urologist',            experience: '12 yrs', ratingSum: 42, ratingCount: 8,  fee: 850, available: true,  qualification: 'MBBS, MS, MCh (Urology)',        hospital: 'Apollo Hospital Chennai', slots: genSlots([0,6], ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd15', name: 'Dr. Deepa Rao',        specialty: 'Gynecologist',         experience: '10 yrs', ratingSum: 47, ratingCount: 9,  fee: 800, available: true,  qualification: 'MBBS, MD, Fellowship (Reproductive Medicine)', hospital: 'Cloudnine Hospital', slots: genSlots([0], ['08:00','08:30','09:00','09:30','10:00','10:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd16', name: 'Dr. Aditya Verma',     specialty: 'Plastic Surgeon',      experience: '11 yrs', ratingSum: 44, ratingCount: 8,  fee: 1200, available: true,  qualification: 'MBBS, MD, DNB (Plastic Surgery)', hospital: 'Breach Candy Hospital', slots: genSlots([0,6], ['10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30','16:00','16:30']), photo: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd17', name: 'Dr. Meera Singh',      specialty: 'Radiologist',          experience: '13 yrs', ratingSum: 45, ratingCount: 9,  fee: 700, available: true,  qualification: 'MBBS, MD, Fellowship (Interventional Radiology)', hospital: 'Tata Memorial Hospital', slots: genSlots([0,5], ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30']), photo: 'https://images.unsplash.com/photo-1527613426441-4da17471b66d?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd18', name: 'Dr. Rajesh Khanna',    specialty: 'Pain Management',      experience: '14 yrs', ratingSum: 48, ratingCount: 9,  fee: 900, available: true,  qualification: 'MBBS, MD, Fellowship (Pain Management)', hospital: 'Max Hospital Delhi', slots: genSlots([0,6], ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1582750433449-648e13861488?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd19', name: 'Dr. Anjali Mehta',     specialty: 'Pediatric Neurologist', experience: '10 yrs', ratingSum: 43, ratingCount: 8,  fee: 850, available: true,  qualification: 'MBBS, MD, DM (Pediatric Neurology)', hospital: 'Indraprastha Apollo', slots: genSlots([0,3], ['08:30','09:00','09:30','10:00','10:30','11:00','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1651008325769-3c2b0e58885e?w=300&h=300&fit=crop&crop=face&auto=format' },
+  { id: 'd20', name: 'Dr. Vikram Shah',      specialty: 'ENT & Head Neck Surgeon', experience: '12 yrs', ratingSum: 46, ratingCount: 9,  fee: 950, available: true,  qualification: 'MBBS, MS, Fellowship (Head & Neck Surgery)', hospital: 'Kokilaben Hospital', slots: genSlots([0,6], ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30']), photo: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=300&h=300&fit=crop&crop=face&auto=format' },
 ];
 
 // Doctor login accounts (pre-seeded)
@@ -59,6 +89,13 @@ const DOCTOR_ID_MAP = {
   'malhotra@medibook.com': 'd11',
   'bose@medibook.com':     'd12',
   'kapoor@medibook.com':   'd13',
+  'sundaram@medibook.com': 'd14',
+  'rao@medibook.com':      'd15',
+  'verma@medibook.com':    'd16',
+  'singh@medibook.com':    'd17',
+  'khanna@medibook.com':   'd18',
+  'anjalimehta@medibook.com': 'd19',
+  'shah@medibook.com':     'd20',
 };
 
 export function AppProvider({ children }) {
@@ -72,19 +109,33 @@ export function AppProvider({ children }) {
   const [doctors, setDoctors]         = useState(DOCTORS_DATA);
   const [patients, setPatients]       = useState([]);
 
-  const normalizeAppointment = (appt) => ({
-    ...appt,
-    doctorId: appt.doctor_code || appt.doctorId,
-    patientId: appt.patient_id || appt.patientId,
-    patientName: appt.patient_name || appt.patientName,
-    patientPhone: appt.patient_phone || appt.patientPhone,
-    doctorName: appt.doctor_name || appt.doctorName,
-    doctorSpecialty: appt.specialty || appt.doctorSpecialty,
-    bookedAt: appt.booked_at || appt.bookedAt,
-    doctorNote: appt.doctor_note || appt.doctorNote || '',
-    date: appt.appointment_date || appt.date,
-    slot: appt.appointment_time || appt.slot,
-  });
+  const normalizeAppointment = (appt) => {
+    const normalized = {
+      ...appt,
+      doctorId: appt.doctor_code || appt.doctorId,
+      patientId: appt.patient_id || appt.patientId,
+      patientName: appt.patient_name || appt.patientName,
+      patientPhone: appt.patient_phone || appt.patientPhone,
+      doctorName: appt.doctor_name || appt.doctorName,
+      doctorSpecialty: appt.specialty || appt.doctorSpecialty,
+      bookedAt: appt.booked_at || appt.bookedAt,
+      doctorNote: appt.doctor_note || appt.doctorNote || '',
+      date: appt.appointment_date || appt.date,
+      slot: appt.appointment_time || appt.slot,
+      original_date: appt.original_date || null,
+      original_time: appt.original_time || null,
+    };
+    
+    // If doctorFee is not provided by backend, look it up from doctors list
+    if (!normalized.doctorFee && normalized.doctorId) {
+      const doctor = doctors.find(d => d.id === normalized.doctorId);
+      if (doctor) {
+        normalized.doctorFee = doctor.fee;
+      }
+    }
+    
+    return normalized;
+  };
 
   const fetchAppointments = async (currentUser) => {
     if (!currentUser) return;
@@ -128,7 +179,7 @@ export function AppProvider({ children }) {
         const local = DOCTORS_DATA.find(d => d.name === backendDoc.name) || {};
         return {
           ...local,
-          id: local.id || String(backendDoc.id),
+          id: backendDoc.doctor_code || local.id || String(backendDoc.id),
           name: backendDoc.name,
           specialty: backendDoc.specialty || local.specialty,
           rating: backendDoc.review_count > 0 ? parseFloat((backendDoc.rating || 0).toFixed(1)) : (local.ratingCount ? parseFloat((local.ratingSum / local.ratingCount).toFixed(1)) : 0),
@@ -376,12 +427,39 @@ export function AppProvider({ children }) {
       else s[newDate] = [newSlot];
       return { ...d, slots: s };
     }));
-    await updateAppointmentStatus(id, { appointment_date: newDate, appointment_time: newSlot, status: 'pending' });
+    // Store original date/time for tracking reschedule requests
+    await updateAppointmentStatus(id, { 
+      appointment_date: newDate, 
+      appointment_time: newSlot, 
+      status: 'pending',
+      original_date: appt.original_date || appt.date,
+      original_time: appt.original_time || appt.slot
+    });
   };
 
-  const rateAppointment = (id, rating, review) => {
+  const rateAppointment = async (id, rating, review) => {
     const appt = appointments.find(a => a.id === id);
     if (!appt) return;
+    
+    // Save to backend
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/appointments/${id}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, review }),
+      });
+      
+      const data = await response.json();
+      if (!data.success) {
+        console.error('Failed to save rating:', data.error);
+        return;
+      }
+    } catch (err) {
+      console.error('Failed to save rating:', err);
+      return;
+    }
+    
+    // Update local state
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, rating, review } : a));
     // Update doctor rating
     setDoctors(prev => prev.map(d => {

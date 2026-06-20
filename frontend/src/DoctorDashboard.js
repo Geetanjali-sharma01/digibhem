@@ -10,16 +10,18 @@ export function DoctorHome({ setPage }) {
   const { doctorAppointments, myDoctorProfile } = useApp();
   const doc = myDoctorProfile;
   const all  = doctorAppointments;
-  const pending   = all.filter(a=>a.status==='pending');
+  const pending   = all.filter(a=>a.status==='pending' && !a.original_date);
+  const rescheduleRequests = all.filter(a=>a.status==='pending' && a.original_date);
   const accepted  = all.filter(a=>a.status==='accepted');
   const completed = all.filter(a=>a.status==='completed');
   const todayAppts = all.filter(a=>a.date===today() && ['accepted','pending'].includes(a.status));
   const rating = doc && doc.ratingCount ? (doc.ratingSum/doc.ratingCount).toFixed(1) : '—';
 
   const stats = [
-    { label:'Pending',   val:pending.length,   icon:'⏳', color:'var(--gold)',    page:'doctor-requests' },
+    { label:'New Requests',   val:pending.length,   icon:'⏳', color:'var(--gold)',    page:'doctor-requests' },
+    { label:'Reschedule',  val:rescheduleRequests.length,  icon:'🔄',  color:'var(--teal)', page:'doctor-requests' },
     { label:'Accepted',  val:accepted.length,  icon:'✓',  color:'var(--success)', page:'doctor-schedule' },
-    { label:'Completed', val:completed.length, icon:'✔',  color:'#4ab3f4',        page:'doctor-schedule' },
+    { label:'Completed', val:completed.length, icon:'✔',  color:'var(--teal)',        page:'doctor-schedule' },
     { label:'Rating',    val:rating,           icon:'⭐', color:'var(--gold)',    page:'doctor-profile'  },
   ];
 
@@ -27,7 +29,7 @@ export function DoctorHome({ setPage }) {
     <div style={{ padding:'28px 32px', animation:'fadeIn 0.35s ease' }}>
       {doc && (
         <Card style={{ marginBottom:28, display:'flex', gap:18, alignItems:'center', background:'linear-gradient(135deg,rgba(0,180,166,0.1) 0%,var(--card-bg) 100%)', flexWrap:'wrap' }}>
-          <Avatar name={doc.name} size={60} />
+          <Avatar name={doc.name} size={60} photo={doc.photo} />
           <div style={{ flex:1 }}>
             <h2 style={{ fontSize:22, marginBottom:2 }}>{doc.name}</h2>
             <p style={{ color:'var(--teal)', fontWeight:600 }}>{doc.specialty}</p>
@@ -96,20 +98,26 @@ export function DoctorRequests() {
   const { doctorAppointments, acceptAppointment, rejectAppointment, completeAppointment } = useApp();
   const [filter, setFilter]     = useState('pending');
   const [actionModal, setActionModal] = useState(null); // {appt, type:'accept'|'reject'|'complete'}
+  const [prescriptionModal, setPrescriptionModal] = useState(null); // {appt}
+  const [prescription, setPrescription] = useState('');
   const [note, setNote]         = useState('');
   const [toast, setToast]       = useState(null);
   const [detailModal, setDetailModal] = useState(null);
 
   const tabs = [
-    { id:'pending',   label:'Pending',   emoji:'⏳' },
+    { id:'pending',   label:'New Requests',   emoji:'⏳' },
+    { id:'reschedule',  label:'Reschedule Requests',  emoji:'🔄'  },
     { id:'accepted',  label:'Accepted',  emoji:'✓'  },
     { id:'completed', label:'Completed', emoji:'✔'  },
     { id:'rejected',  label:'Rejected',  emoji:'✕'  },
     { id:'cancelled', label:'Cancelled', emoji:'—'  },
   ];
 
-  const list = filter==='all' ? doctorAppointments : doctorAppointments.filter(a=>a.status===filter);
-  const sorted = [...list].sort((a,b)=>a.date.localeCompare(b.date)||a.slot.localeCompare(b.slot));
+  // Filter appointments - show reschedule requests (pending status with original date different from current)
+  const list = filter === 'all' ? doctorAppointments : 
+               filter === 'reschedule' ? doctorAppointments.filter(a => a.status === 'pending' && a.original_date) :
+               doctorAppointments.filter(a => a.status === filter);
+  const sorted = [...list].sort((a,b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot));
 
   const doAction = async () => {
     const { appt, type } = actionModal;
@@ -124,6 +132,11 @@ export function DoctorRequests() {
     if (type === 'complete') {
       await completeAppointment(appt.id, note);
       setToast({ msg:'Marked as completed ✔', type:'success' });
+      // Open prescription modal after completing
+      if (note.trim()) {
+        setPrescriptionModal(appt);
+        setPrescription(note);
+      }
     }
     setActionModal(null); setNote('');
   };
@@ -138,7 +151,9 @@ export function DoctorRequests() {
 
       <div style={{ display:'flex', gap:8, marginBottom:24, flexWrap:'wrap' }}>
         {tabs.map(t => {
-          const cnt = doctorAppointments.filter(a=>a.status===t.id).length;
+          const cnt = t.id === 'reschedule' ? 
+            doctorAppointments.filter(a => a.status === 'pending' && a.original_date).length :
+            doctorAppointments.filter(a => a.status === t.id).length;
           return (
             <button key={t.id} onClick={()=>setFilter(t.id)} style={{
               padding:'8px 16px', borderRadius:9, fontSize:13, cursor:'pointer', fontWeight:filter===t.id?600:400,
@@ -170,9 +185,36 @@ export function DoctorRequests() {
                       <span style={{ fontSize:13, color:'var(--text-light)' }}>📅 {fmt(appt.date)}</span>
                       <span style={{ fontSize:13, color:'var(--text-light)' }}>🕐 {appt.slot}</span>
                     </div>
+                    {filter === 'reschedule' && appt.original_date && (
+                      <div style={{ 
+                        background:'linear-gradient(135deg, rgba(251,191,36,0.1) 0%, rgba(251,191,36,0.05) 100%)', 
+                        border:'1px solid rgba(251,191,36,0.3)',
+                        padding:'12px 14px', 
+                        borderRadius:8, 
+                        marginBottom:10 
+                      }}>
+                        <div style={{ fontSize:12, color:'var(--gold)', fontWeight:600, marginBottom:6 }}>
+                          🔄 RESCHEDULE REQUEST
+                        </div>
+                        <div style={{ display:'flex', gap:16, flexWrap:'wrap', fontSize:12 }}>
+                          <div>
+                            <span style={{ color:'var(--text-light)' }}>Original:</span>
+                            <span style={{ fontWeight:600, marginLeft:6, textDecoration:'line-through', opacity:0.7 }}>
+                              {fmt(appt.original_date)} at {appt.original_time}
+                            </span>
+                          </div>
+                          <div>
+                            <span style={{ color:'var(--teal)' }}>New:</span>
+                            <span style={{ fontWeight:600, marginLeft:6, color:'var(--teal)' }}>
+                              {fmt(appt.date)} at {appt.slot}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {appt.reason && <p style={{ fontSize:13, marginBottom:4 }}>📝 <em>{appt.reason}</em></p>}
                     {appt.symptoms && <p style={{ fontSize:12, color:'var(--text-light)', marginBottom:8 }}>Symptoms: {appt.symptoms}</p>}
-                    {appt.doctorNote && <p style={{ fontSize:12, color:'#4ab3f4', background:'rgba(74,179,244,0.08)', padding:'6px 10px', borderRadius:7, marginBottom:8 }}>Your note: {appt.doctorNote}</p>}
+                    {appt.doctorNote && <p style={{ fontSize:12, color:'var(--teal)', background:'rgba(14,165,233,0.08)', padding:'6px 10px', borderRadius:7, marginBottom:8 }}>Your note: {appt.doctorNote}</p>}
                     {appt.rating && (
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                         <StarRating value={appt.rating} size={15} />
@@ -209,7 +251,20 @@ export function DoctorRequests() {
               </label>
               <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
                 placeholder={actionModal.type==='reject' ? 'e.g. Slot unavailable, please reschedule…' : actionModal.type==='complete' ? 'e.g. Prescribed antibiotics, follow up in 7 days…' : 'e.g. Please arrive 10 mins early…'}
-                style={{ width:'100%', padding:'10px 13px', background:'rgba(255,255,255,0.05)', border:'1.5px solid rgba(255,255,255,0.12)', borderRadius:9, color:'#fff', fontSize:14, resize:'vertical' }} />
+                style={{ 
+                  width:'100%', 
+                  padding:'10px 13px', 
+                  background:'var(--surface)', 
+                  border:'1.5px solid var(--surface-border)', 
+                  borderRadius:9, 
+                  color:'var(--text-primary)', 
+                  fontSize:14, 
+                  resize:'vertical',
+                  outline:'none'
+                }}
+                onFocus={e => e.target.style.borderColor = 'var(--teal)'}
+                onBlur={e => e.target.style.borderColor = 'var(--surface-border)'}
+              />
             </div>
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
               <Btn variant="ghost" onClick={()=>setActionModal(null)}>Cancel</Btn>
@@ -249,6 +304,50 @@ export function DoctorRequests() {
           </div>
         )}
       </Modal>
+      
+      {/* Prescription Modal */}
+      <Modal isOpen={!!prescriptionModal} onClose={()=>setPrescriptionModal(null)} title="📝 Prescription & Notes" wide>
+        {prescriptionModal && (
+          <div>
+            <Card style={{ marginBottom:20, padding:16, background:'rgba(14,165,233,0.05)', border:'1px solid var(--border)' }}>
+              <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
+                <Avatar name={prescriptionModal.patientName} size={40} />
+                <div>
+                  <p style={{ fontWeight:700, fontSize:15 }}>{prescriptionModal.patientName}</p>
+                  <p style={{ fontSize:13, color:'var(--text-light)' }}>📅 {fmt(prescriptionModal.date)} · 🕐 {prescriptionModal.slot}</p>
+                </div>
+              </div>
+              {prescriptionModal.reason && <p style={{ fontSize:13, color:'var(--text-light)' }}>📝 Reason: {prescriptionModal.reason}</p>}
+            </Card>
+            
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:8, color:'var(--teal)' }}>
+                💊 Prescription / Medical Notes
+              </label>
+              <div style={{ padding:16, background:'var(--card-bg)', borderRadius:10, border:'1px solid var(--border)', minHeight:120, whiteSpace:'pre-wrap', fontSize:14, lineHeight:1.6 }}>
+                {prescription || 'No prescription notes added.'}
+              </div>
+            </div>
+            
+            <div style={{ padding:14, background:'rgba(251,191,36,0.08)', borderRadius:10, border:'1px solid rgba(251,191,36,0.2)', marginBottom:16 }}>
+              <p style={{ fontSize:13, color:'var(--gold)', marginBottom:6 }}>⚠️ Important Reminder</p>
+              <p style={{ fontSize:12, color:'var(--text-light)', lineHeight:1.5 }}>
+                This prescription is saved in the patient's appointment record. The patient can view this in their appointment details. 
+                Always include dosage instructions, duration, and any follow-up recommendations.
+              </p>
+            </div>
+            
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <Btn variant="ghost" onClick={()=>setPrescriptionModal(null)}>Close</Btn>
+              <Btn variant="primary" onClick={()=>{
+                // Copy prescription to clipboard
+                navigator.clipboard.writeText(prescription);
+                setToast({ msg:'Prescription copied to clipboard!', type:'success' });
+              }}>📋 Copy Prescription</Btn>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -258,6 +357,8 @@ export function DoctorSchedule() {
   const { doctorAppointments, acceptAppointment, rejectAppointment, completeAppointment } = useApp();
   const [selDate, setSelDate] = useState(today());
   const [toast, setToast] = useState(null);
+  const [prescriptionModal, setPrescriptionModal] = useState(null);
+  const [prescription, setPrescription] = useState('');
 
   // Build date list with appointment counts
   const dateMap = {};
@@ -293,7 +394,7 @@ export function DoctorSchedule() {
               minWidth:62, padding:'10px 8px', borderRadius:11, cursor:'pointer', textAlign:'center', flexShrink:0,
               background: isSel ? 'var(--teal)' : isToday ? 'rgba(0,180,166,0.1)' : 'var(--card-bg)',
               border: `1.5px solid ${isSel ? 'var(--teal)' : isToday ? 'rgba(0,180,166,0.4)' : 'var(--border)'}`,
-              color: isSel ? 'var(--navy)' : '#fff',
+              color: isSel ? 'var(--navy)' : 'var(--text-primary)',
             }}>
               <div style={{ fontSize:11, marginBottom:2, opacity:0.8 }}>{dt.toLocaleDateString('en-IN',{weekday:'short'})}</div>
               <div style={{ fontSize:18, fontWeight:700 }}>{dt.getDate()}</div>
@@ -314,7 +415,14 @@ export function DoctorSchedule() {
         : (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {dayAppts.map(a => (
-              <Card key={a.id} style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
+              <Card key={a.id} style={{ 
+                display:'flex', 
+                gap:16, 
+                alignItems:'center', 
+                flexWrap:'wrap',
+                border: a.original_date ? '1px solid rgba(251,191,36,0.3)' : undefined,
+                background: a.original_date ? 'linear-gradient(135deg, var(--card-bg) 0%, rgba(251,191,36,0.03) 100%)' : undefined,
+              }}>
                 <div style={{ background:'rgba(0,180,166,0.1)', borderRadius:10, padding:'10px 14px', textAlign:'center', minWidth:60 }}>
                   <p style={{ fontSize:15, fontWeight:700, color:'var(--teal)' }}>{a.slot}</p>
                 </div>
@@ -322,18 +430,86 @@ export function DoctorSchedule() {
                 <div style={{ flex:1, minWidth:160 }}>
                   <p style={{ fontWeight:700 }}>{a.patientName}</p>
                   <p style={{ fontSize:13, color:'var(--text-light)' }}>{a.reason}</p>
+                  {a.original_date && (
+                    <div style={{ fontSize:11, color:'var(--gold)', marginTop:4 }}>
+                      🔄 Rescheduled from {fmt(a.original_date)} {a.original_time}
+                    </div>
+                  )}
                 </div>
+                {a.original_date && (
+                  <span style={{ 
+                    fontSize:10, 
+                    fontWeight:700, 
+                    background:'rgba(251,191,36,0.15)', 
+                    color:'var(--gold)', 
+                    padding:'4px 8px', 
+                    borderRadius:12 
+                  }}>
+                    RESCHEDULED
+                  </span>
+                )}
                 <StatusBadge status={a.status} />
                 <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                   {a.status==='pending'  && <Btn small variant="success" onClick={()=>{acceptAppointment(a.id);setToast({msg:'Accepted ✓',type:'success'})}}>Accept</Btn>}
                   {a.status==='pending'  && <Btn small variant="danger"  onClick={()=>{rejectAppointment(a.id);setToast({msg:'Rejected',type:'error'})}}>Reject</Btn>}
-                  {a.status==='accepted' && <Btn small variant="primary" onClick={()=>{completeAppointment(a.id);setToast({msg:'Marked complete ✔',type:'success'})}}>Complete</Btn>}
+                  {a.status==='accepted' && <Btn small variant="primary" onClick={async ()=>{
+                    await completeAppointment(a.id);
+                    setPrescriptionModal(a);
+                    setPrescription(a.doctorNote || '');
+                    setToast({msg:'Marked complete ✔',type:'success'});
+                  }}>Complete</Btn>}
+                  {a.status==='completed' && a.doctorNote && <Btn small variant="ghost" onClick={()=>{
+                    setPrescriptionModal(a);
+                    setPrescription(a.doctorNote);
+                  }}>📝 View Prescription</Btn>}
                 </div>
               </Card>
             ))}
           </div>
         )
       }
+      
+      {/* Prescription Modal */}
+      <Modal isOpen={!!prescriptionModal} onClose={()=>setPrescriptionModal(null)} title="📝 Prescription & Notes" wide>
+        {prescriptionModal && (
+          <div>
+            <Card style={{ marginBottom:20, padding:16, background:'rgba(14,165,233,0.05)', border:'1px solid var(--border)' }}>
+              <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
+                <Avatar name={prescriptionModal.patientName} size={40} />
+                <div>
+                  <p style={{ fontWeight:700, fontSize:15 }}>{prescriptionModal.patientName}</p>
+                  <p style={{ fontSize:13, color:'var(--text-light)' }}>📅 {fmt(prescriptionModal.date)} · 🕐 {prescriptionModal.slot}</p>
+                </div>
+              </div>
+              {prescriptionModal.reason && <p style={{ fontSize:13, color:'var(--text-light)' }}>📝 Reason: {prescriptionModal.reason}</p>}
+            </Card>
+            
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:8, color:'var(--teal)' }}>
+                💊 Prescription / Medical Notes
+              </label>
+              <div style={{ padding:16, background:'var(--card-bg)', borderRadius:10, border:'1px solid var(--border)', minHeight:120, whiteSpace:'pre-wrap', fontSize:14, lineHeight:1.6 }}>
+                {prescription || 'No prescription notes added.'}
+              </div>
+            </div>
+            
+            <div style={{ padding:14, background:'rgba(251,191,36,0.08)', borderRadius:10, border:'1px solid rgba(251,191,36,0.2)', marginBottom:16 }}>
+              <p style={{ fontSize:13, color:'var(--gold)', marginBottom:6 }}>⚠️ Important Reminder</p>
+              <p style={{ fontSize:12, color:'var(--text-light)', lineHeight:1.5 }}>
+                This prescription is saved in the patient's appointment record. The patient can view this in their appointment details.
+              </p>
+            </div>
+            
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <Btn variant="ghost" onClick={()=>setPrescriptionModal(null)}>Close</Btn>
+              <Btn variant="primary" onClick={()=>{
+                navigator.clipboard.writeText(prescription);
+                setToast({ msg:'Prescription copied!', type:'success' });
+              }}>📋 Copy</Btn>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -353,7 +529,7 @@ export function DoctorProfilePage() {
 
       <Card style={{ marginBottom:20 }}>
         <div style={{ display:'flex', gap:20, alignItems:'center', flexWrap:'wrap' }}>
-          <Avatar name={doc.name} size={70} />
+          <Avatar name={doc.name} size={70} photo={doc.photo} />
           <div style={{ flex:1 }}>
             <h2 style={{ fontSize:22 }}>{doc.name}</h2>
             <p style={{ color:'var(--teal)', fontWeight:600, marginBottom:2 }}>{doc.specialty}</p>
@@ -391,7 +567,7 @@ export function DoctorProfilePage() {
                   <StarRating value={a.rating} size={16} />
                 </div>
                 {a.review && <p style={{ fontSize:13, color:'var(--text-light)', fontStyle:'italic', marginLeft:42 }}>"{a.review}"</p>}
-                <p style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginLeft:42, marginTop:4 }}>{fmt(a.date)}</p>
+                <p style={{ fontSize:11, color:'var(--text-light)', marginLeft:42, marginTop:4 }}>{fmt(a.date)}</p>
               </div>
             ))}
           </div>

@@ -1,18 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from './AppContext';
 import { Avatar } from './components';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
 export default function Nav({ page, setPage }) {
   const { user, logout, theme, toggleTheme } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isDoctor = user?.role === 'doctor';
   const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    if (!user) return;
+    fetchUnreadCount();
+    
+    // Listen for notification updates from NotificationsPage
+    const handleNotificationsUpdated = () => fetchUnreadCount();
+    window.addEventListener('notifications-updated', handleNotificationsUpdated);
+    
+    return () => {
+      window.removeEventListener('notifications-updated', handleNotificationsUpdated);
+    };
+  }, [user?.id]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      // For doctors, use doctorId (e.g., 'd6'), for patients use id (e.g., 8)
+      const userId = user.role === 'doctor' ? user.doctorId : user.id;
+      const resp = await fetch(`${BACKEND_URL}/api/notifications/${userId}`);
+      if (resp.ok) {
+        const notifications = await resp.json();
+        const unread = notifications.filter(n => !n.is_read).length;
+        setUnreadCount(unread);
+      }
+    } catch (err) {
+      console.error('Failed to fetch notification count:', err);
+    }
+  };
 
   const patientLinks = [
     { id: 'home',         icon: '🏠', label: 'Dashboard' },
     { id: 'booking',      icon: '📅', label: 'Book Appointment' },
     { id: 'appointments', icon: '📋', label: 'My Appointments' },
+    { id: 'notifications',icon: '🔔', label: 'Notifications' },
     { id: 'profile',      icon: '👤', label: 'Profile' },
   ];
 
@@ -20,6 +52,7 @@ export default function Nav({ page, setPage }) {
     { id: 'doctor-home',     icon: '🏠', label: 'Dashboard' },
     { id: 'doctor-schedule', icon: '📅', label: 'Schedule' },
     { id: 'doctor-requests', icon: '📬', label: 'Requests' },
+    { id: 'doctor-notifications', icon: '🔔', label: 'Notifications' },
     { id: 'doctor-profile',  icon: '👤', label: 'My Profile' },
   ];
 
@@ -41,16 +74,43 @@ export default function Nav({ page, setPage }) {
         </div>
       </div>
       <nav style={{ padding:'14px 10px', flex:1 }}>
-        {links.map(({ id, icon, label }) => (
-          <button key={id} onClick={() => { setPage(id); setMobileOpen(false); }} style={{
-            display:'flex', alignItems:'center', gap:12, width:'100%', padding:'11px 14px', borderRadius:10, marginBottom:3,
-            background: page===id ? 'rgba(0,180,166,0.13)' : 'transparent',
-            color: page===id ? 'var(--teal)' : 'var(--text-light)',
-            fontWeight: page===id ? 600 : 400,
-            border: page===id ? '1px solid rgba(0,180,166,0.25)' : '1px solid transparent',
-            fontSize:14, cursor:'pointer', transition:'all 0.18s',
-          }}><span style={{ fontSize:16 }}>{icon}</span>{label}</button>
-        ))}
+        {links.map(({ id, icon, label }) => {
+          const isNotifications = id === 'notifications' || id === 'doctor-notifications';
+          const showBadge = isNotifications && unreadCount > 0;
+          
+          return (
+            <button key={id} onClick={() => { setPage(id); setMobileOpen(false); }} style={{
+              display:'flex', alignItems:'center', gap:12, width:'100%', padding:'11px 14px', borderRadius:10, marginBottom:3,
+              background: page===id ? 'rgba(0,180,166,0.13)' : 'transparent',
+              color: page===id ? 'var(--teal)' : 'var(--text-light)',
+              fontWeight: page===id ? 600 : 400,
+              border: page===id ? '1px solid rgba(0,180,166,0.25)' : '1px solid transparent',
+              fontSize:14, cursor:'pointer', transition:'all 0.18s',
+              position: 'relative',
+            }}>
+              <span style={{ fontSize:16 }}>{icon}</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>
+              {showBadge && (
+                <span style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'var(--danger)',
+                  color: '#fff',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '2px 7px',
+                  borderRadius: 10,
+                  minWidth: 18,
+                  textAlign: 'center',
+                }}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </nav>
       <div style={{ padding:'14px 10px', borderTop:'1px solid var(--border)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', marginBottom:8 }}>

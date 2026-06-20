@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from './AppContext';
 import { Card, Btn, Input, Divider, StatusBadge, StarRating, Avatar, Modal, Toast } from './components';
 
@@ -9,6 +9,8 @@ const TABS = [
   { id: 'appointments', label: 'Appointments', icon: '📋' },
   { id: 'doctors', label: 'Doctors', icon: '🩺' },
   { id: 'patients', label: 'Patients', icon: '🏥' },
+  { id: 'reviews', label: 'Reviews', icon: '⭐' },
+  { id: 'notifications', label: 'Notifications', icon: '🔔' },
 ];
 
 /* ─── Stat Card ─── */
@@ -31,21 +33,22 @@ function StatusBar({ appointments }) {
   const total = appointments.length || 1;
   const counts = { pending: 0, accepted: 0, completed: 0, rejected: 0, cancelled: 0 };
   appointments.forEach(a => { if (counts[a.status] !== undefined) counts[a.status]++; });
-  const colors = { pending: '#f5c542', accepted: 'var(--success)', completed: '#4ab3f4', rejected: 'var(--danger)', cancelled: '#888' };
+  const colors = { pending: 'var(--gold)', accepted: 'var(--success)', completed: 'var(--teal)', rejected: 'var(--danger)', cancelled: 'var(--text-light)' };
 
   return (
     <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '20px' }}>
       <h3 style={{ fontSize: 16, marginBottom: 14 }}>Appointment Status Distribution</h3>
-      <div style={{ display: 'flex', height: 32, borderRadius: 8, overflow: 'hidden', background: 'rgba(255,255,255,0.05)' }}>
+      <div style={{ display: 'flex', height: 32, borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
         {Object.entries(counts).filter(([, v]) => v > 0).map(([key, val]) => (
-          <div key={key} title={`${key}: ${val}`} style={{ width: `${(val / total) * 100}%`, background: colors[key], transition: 'width 0.4s', minWidth: val > 0 ? 8 : 0, cursor: 'pointer' }} />
+          <div key={key} title={`${key}: ${val} (${((val / total) * 100).toFixed(1)}%)`} style={{ width: `${(val / total) * 100}%`, background: colors[key], transition: 'width 0.4s', minWidth: val > 0 ? 8 : 0, cursor: 'pointer' }} />
         ))}
       </div>
       <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
         {Object.entries(counts).map(([key, val]) => (
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-light)' }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: colors[key], flexShrink: 0 }} />
-            {key.charAt(0).toUpperCase() + key.slice(1)}: <strong style={{ color: 'var(--white)' }}>{val}</strong>
+            {key.charAt(0).toUpperCase() + key.slice(1)}: <strong style={{ color: 'var(--text-primary)' }}>{val}</strong>
+            <span style={{ fontSize: 11 }}>({((val / total) * 100).toFixed(1)}%)</span>
           </div>
         ))}
       </div>
@@ -86,25 +89,47 @@ function OverviewTab({ appointments, doctors, patients, todaysDate }) {
   const todayAppointments = appointments.filter(a => a.date === todaysDate);
   const pendingCount = appointments.filter(a => a.status === 'pending').length;
   const completedCount = appointments.filter(a => a.status === 'completed').length;
+  const cancelledCount = appointments.filter(a => a.status === 'cancelled').length;
+  const cancellationRate = appointments.length > 0 ? ((cancelledCount / appointments.length) * 100).toFixed(1) : '0.0';
 
-  // Specialty demand
+  // Specialty demand - use doctorId which is normalized from doctor_code
   const specialtyDemand = {};
   doctors.forEach(d => {
-    const count = appointments.filter(a => a.doctorId === d.id || a.doctor_code === d.id).length;
+    const count = appointments.filter(a => a.doctorId === d.id).length;
     specialtyDemand[d.specialty] = (specialtyDemand[d.specialty] || 0) + count;
   });
   const topSpecialties = Object.entries(specialtyDemand).sort((a, b) => b[1] - a[1]);
 
+  // Busiest doctors
+  const doctorAppointmentCounts = doctors.map(d => ({
+    ...d,
+    appointmentCount: appointments.filter(a => a.doctorId === d.id).length,
+  })).sort((a, b) => b.appointmentCount - a.appointmentCount).slice(0, 5);
+
+  // Booking trends (last 7 days)
+  const trends = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    const dayLabel = date.toLocaleDateString('en-IN', { weekday: 'short' });
+    const count = appointments.filter(a => a.date === dateStr).length;
+    trends.push({ date: dateStr, label: dayLabel, count });
+  }
+  const maxTrend = Math.max(...trends.map(t => t.count), 1);
+
   return (
     <div>
       {/* Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16, marginBottom: 20 }}>
         <StatCard label="Total Patients" value={patients.length} icon="👥" />
         <StatCard label="Total Doctors" value={doctors.length} icon="🩺" />
         <StatCard label="Total Appointments" value={appointments.length} icon="📋" />
         <StatCard label="Today's Appointments" value={todayAppointments.length} icon="📅" />
         <StatCard label="Pending Requests" value={pendingCount} icon="⏳" />
         <StatCard label="Completed" value={completedCount} icon="✔" />
+        <StatCard label="Cancelled" value={cancelledCount} icon="✕" />
+        <StatCard label="Cancellation Rate" value={`${cancellationRate}%`} icon="📊" />
       </div>
 
       {/* Status Distribution + Recent Activity */}
@@ -113,27 +138,75 @@ function OverviewTab({ appointments, doctors, patients, todaysDate }) {
         <RecentActivity appointments={appointments} />
       </div>
 
-      {/* Specialty Demand */}
-      <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '20px' }}>
-        <h3 style={{ fontSize: 16, marginBottom: 14 }}>Specialty Demand</h3>
-        {!topSpecialties.length && <div style={{ color: 'var(--text-light)', fontSize: 13 }}>No booking data yet.</div>}
-        <div style={{ display: 'grid', gap: 12 }}>
-          {topSpecialties.map(([specialty, count]) => {
-            const maxCount = topSpecialties[0]?.[1] || 1;
-            return (
-              <div key={specialty}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span>{specialty}</span>
-                  <strong>{count} booking{count !== 1 ? 's' : ''}</strong>
-                </div>
-                <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${(count / maxCount) * 100}%`, background: 'var(--teal)', borderRadius: 4, transition: 'width 0.4s' }} />
-                </div>
-              </div>
-            );
-          })}
+      {/* Booking Trends Chart */}
+      <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '20px', marginBottom: 20 }}>
+        <h3 style={{ fontSize: 16, marginBottom: 14 }}>Booking Trends (Last 7 Days)</h3>
+        {!appointments.length && <div style={{ color: 'var(--text-light)', fontSize: 13 }}>No booking data yet.</div>}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120, marginTop: 16 }}>
+          {trends.map((t, idx) => (
+            <div key={t.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              {t.count > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--teal)' }}>{t.count}</span>
+              )}
+              <div style={{ 
+                width: '100%', 
+                height: `${Math.max((t.count / maxTrend) * 100, t.count > 0 ? 8 : 2)}%`, 
+                background: t.date === todaysDate ? 'var(--teal)' : 'rgba(14,165,233,0.5)', 
+                borderRadius: '6px 6px 0 0',
+                transition: 'height 0.4s ease',
+                minHeight: t.count > 0 ? 8 : 2,
+              }} />
+              <span style={{ fontSize: 11, color: 'var(--text-light)', fontWeight: t.date === todaysDate ? 700 : 400 }}>{t.label}</span>
+            </div>
+          ))}
         </div>
       </Card>
+
+      {/* Busiest Doctors + Specialty Demand */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* Busiest Doctors */}
+        <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '20px' }}>
+          <h3 style={{ fontSize: 16, marginBottom: 14 }}>🏆 Busiest Doctors</h3>
+          {!doctorAppointmentCounts.length && <div style={{ color: 'var(--text-light)', fontSize: 13 }}>No data yet.</div>}
+          <div style={{ display: 'grid', gap: 10 }}>
+            {doctorAppointmentCounts.map((doc, idx) => (
+              <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'var(--card-bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: idx === 0 ? 'var(--gold)' : idx === 1 ? 'var(--text-light)' : idx === 2 ? '#cd7f32' : 'var(--text-light)', minWidth: 24 }}>
+                  #{idx + 1}
+                </span>
+                <Avatar name={doc.name} size={32} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-light)' }}>{doc.specialty}</div>
+                </div>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--teal)' }}>{doc.appointmentCount}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Specialty Demand */}
+        <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '20px' }}>
+          <h3 style={{ fontSize: 16, marginBottom: 14 }}>Specialty Demand</h3>
+          {!topSpecialties.length && <div style={{ color: 'var(--text-light)', fontSize: 13 }}>No booking data yet.</div>}
+          <div style={{ display: 'grid', gap: 12 }}>
+            {topSpecialties.map(([specialty, count]) => {
+              const maxCount = topSpecialties[0]?.[1] || 1;
+              return (
+                <div key={specialty}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                    <span>{specialty}</span>
+                    <strong>{count} booking{count !== 1 ? 's' : ''}</strong>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${(count / maxCount) * 100}%`, background: 'var(--teal)', borderRadius: 4, transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -213,49 +286,66 @@ function AppointmentsTab({ appointments, doctors, onStatusChange }) {
         Showing {filtered.length} of {appointments.length} appointments
       </div>
 
-      {/* Appointments List */}
-      <div style={{ display: 'grid', gap: 10 }}>
-        {filtered.map(appt => (
-          <Card key={appt.id} style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '16px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 600 }}>{appt.patientName || 'Unknown Patient'}</span>
-                  <StatusBadge status={appt.status} />
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text-light)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
-                  <span>Doctor: <strong style={{ color: 'var(--white)' }}>{appt.doctorName || '—'}</strong></span>
-                  <span>Specialty: <strong style={{ color: 'var(--white)' }}>{appt.doctorSpecialty || '—'}</strong></span>
-                  <span>Date: <strong style={{ color: 'var(--white)' }}>{appt.date || '—'}</strong></span>
-                  <span>Time: <strong style={{ color: 'var(--white)' }}>{appt.slot || '—'}</strong></span>
-                  <span>Phone: <strong style={{ color: 'var(--white)' }}>{appt.patientPhone || '—'}</strong></span>
-                  <span>Booked: <strong style={{ color: 'var(--white)' }}>{appt.bookedAt ? new Date(appt.bookedAt).toLocaleDateString() : '—'}</strong></span>
-                  {appt.reason && <span style={{ gridColumn: '1/-1' }}>Reason: <strong style={{ color: 'var(--white)' }}>{appt.reason}</strong></span>}
-                  {appt.symptoms && <span style={{ gridColumn: '1/-1' }}>Symptoms: <strong style={{ color: 'var(--white)' }}>{appt.symptoms}</strong></span>}
-                  {appt.doctorNote && <span style={{ gridColumn: '1/-1' }}>Doctor Note: <strong style={{ color: 'var(--white)' }}>{appt.doctorNote}</strong></span>}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                {appt.status === 'pending' && (
-                  <>
-                    <Btn small variant="success" onClick={() => setConfirmModal({ appt, action: { status: 'accepted' }, label: 'Accept' })}>✓ Accept</Btn>
-                    <Btn small variant="danger" onClick={() => setConfirmModal({ appt, action: { status: 'rejected' }, label: 'Reject' })}>✕ Reject</Btn>
-                  </>
-                )}
-                {(appt.status === 'pending' || appt.status === 'accepted') && (
-                  <Btn small variant="ghost" onClick={() => setConfirmModal({ appt, action: { status: 'cancelled' }, label: 'Cancel' })}>Cancel</Btn>
-                )}
-                {appt.status === 'accepted' && (
-                  <Btn small variant="primary" onClick={() => setConfirmModal({ appt, action: { status: 'completed' }, label: 'Complete' })}>✔ Complete</Btn>
-                )}
-              </div>
-            </div>
-          </Card>
-        ))}
-        {!filtered.length && (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-light)' }}>No appointments match your filters.</div>
-        )}
-      </div>
+      {/* Appointments Table */}
+      <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: 'rgba(14,165,233,0.1)', borderBottom: '2px solid var(--teal)' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Patient</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doctor</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Specialty</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Time</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((appt, idx) => (
+                <tr key={appt.id} style={{ 
+                  borderBottom: '1px solid var(--border)',
+                  background: idx % 2 === 0 ? 'transparent' : 'var(--surface)',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,233,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--surface)'}
+                >
+                  <td style={{ padding: '12px 16px', fontWeight: 600 }}>{appt.patientName || 'Unknown'}</td>
+                  <td style={{ padding: '12px 16px' }}>{appt.doctorName || '—'}</td>
+                  <td style={{ padding: '12px 16px', color: 'var(--teal)' }}>{appt.doctorSpecialty || '—'}</td>
+                  <td style={{ padding: '12px 16px' }}>{appt.date || '—'}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 500 }}>{appt.slot || '—'}</td>
+                  <td style={{ padding: '12px 16px' }}><StatusBadge status={appt.status} /></td>
+                  <td style={{ padding: '12px 16px' }}>{appt.patientPhone || '—'}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {appt.status === 'pending' && (
+                        <>
+                          <Btn tiny variant="success" onClick={() => setConfirmModal({ appt, action: { status: 'accepted' }, label: 'Accept' })}>✓</Btn>
+                          <Btn tiny variant="danger" onClick={() => setConfirmModal({ appt, action: { status: 'rejected' }, label: 'Reject' })}>✕</Btn>
+                        </>
+                      )}
+                      {(appt.status === 'pending' || appt.status === 'accepted') && (
+                        <Btn tiny variant="ghost" onClick={() => setConfirmModal({ appt, action: { status: 'cancelled' }, label: 'Cancel' })}>Cancel</Btn>
+                      )}
+                      {appt.status === 'accepted' && (
+                        <Btn tiny variant="primary" onClick={() => setConfirmModal({ appt, action: { status: 'completed' }, label: 'Complete' })}>✔</Btn>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!filtered.length && (
+                <tr>
+                  <td colSpan="8" style={{ padding: 40, textAlign: 'center', color: 'var(--text-light)' }}>No appointments match your filters.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Confirm Modal */}
       <Modal isOpen={!!confirmModal} onClose={() => setConfirmModal(null)} title="Confirm Action">
@@ -295,37 +385,75 @@ function DoctorsTab({ doctors, appointments }) {
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
-        {doctorData.map(doc => (
-          <Card key={doc.id} style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '20px', cursor: 'pointer' }} onClick={() => setSelectedDoc(doc)}>
-            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <Avatar name={doc.name} size={50} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: 16, marginBottom: 2 }}>{doc.name}</h3>
-                <div style={{ fontSize: 13, color: 'var(--teal)', fontWeight: 500, marginBottom: 6 }}>{doc.specialty}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px', fontSize: 12, color: 'var(--text-light)' }}>
-                  {doc.qualification && <span>🎓 {doc.qualification}</span>}
-                  {doc.hospital && <span>🏥 {doc.hospital}</span>}
-                  {doc.experience && <span>⏱ {doc.experience} exp</span>}
-                  {doc.fee && <span>💰 ₹{doc.fee}</span>}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--teal)' }}>{doc.totalAppts}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-light)' }}>Bookings</div>
-              </div>
-            </div>
-            {/* Mini status bar */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 14, fontSize: 12, color: 'var(--text-light)' }}>
-              <span>⏳ {doc.pending}</span>
-              <span>✓ {doc.accepted}</span>
-              <span>✔ {doc.completed}</span>
-              <span>✕ {doc.rejected}</span>
-              <span style={{ marginLeft: 'auto' }}>⭐ {doc.avgRating}</span>
-            </div>
-          </Card>
-        ))}
-      </div>
+      {/* Doctors Table */}
+      <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: 'rgba(14,165,233,0.1)', borderBottom: '2px solid var(--teal)' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doctor</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Specialty</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Qualification</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hospital</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fee</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Completed</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rating</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {doctorData.map((doc, idx) => (
+                <tr key={doc.id} style={{ 
+                  borderBottom: '1px solid var(--border)',
+                  background: idx % 2 === 0 ? 'transparent' : 'var(--surface)',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                onClick={() => setSelectedDoc(doc)}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,233,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--surface)'}
+                >
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Avatar name={doc.name} size={36} />
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{doc.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-light)' }}>{doc.experience} exp</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 16px', color: 'var(--teal)', fontWeight: 500 }}>{doc.specialty}</td>
+                  <td style={{ padding: '12px 16px', fontSize: 12 }}>{doc.qualification || '—'}</td>
+                  <td style={{ padding: '12px 16px', fontSize: 12 }}>{doc.hospital || '—'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600 }}>₹{doc.fee || '—'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, fontSize: 15 }}>{doc.totalAppts}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <span style={{ background: doc.pending > 0 ? 'rgba(251,191,36,0.15)' : 'transparent', padding: '4px 10px', borderRadius: 12, color: doc.pending > 0 ? 'var(--gold)' : 'var(--text-light)', fontWeight: 600 }}>
+                      {doc.pending}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <span style={{ background: doc.completed > 0 ? 'rgba(16,185,129,0.15)' : 'transparent', padding: '4px 10px', borderRadius: 12, color: doc.completed > 0 ? 'var(--success)' : 'var(--text-light)', fontWeight: 600 }}>
+                      {doc.completed}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      <span style={{ color: 'var(--gold)' }}>⭐</span>
+                      <strong>{doc.avgRating}</strong>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <Btn tiny variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedDoc(doc); }}>View</Btn>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Doctor Detail Modal */}
       <Modal isOpen={!!selectedDoc} onClose={() => setSelectedDoc(null)} title={selectedDoc?.name || ''} wide>
@@ -410,34 +538,80 @@ function PatientsTab({ patients, appointments }) {
         {filtered.length} patient{filtered.length !== 1 ? 's' : ''} found
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
-        {filtered.map(p => (
-          <Card key={p.id} style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '18px', cursor: 'pointer' }} onClick={() => setSelectedPatient(p)}>
-            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <Avatar name={p.name} size={46} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: 15, marginBottom: 4 }}>{p.name}</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px', fontSize: 12, color: 'var(--text-light)' }}>
-                  {p.email && <span>📧 {p.email}</span>}
-                  {p.phone && <span>📞 {p.phone}</span>}
-                  {p.blood && <span>🩸 {p.blood}</span>}
-                  {p.gender && <span>👤 {p.gender}</span>}
-                  {p.dob && <span>🎂 {p.dob}</span>}
-                  <span>📋 {p.appointmentCount} appointment{p.appointmentCount !== 1 ? 's' : ''}</span>
-                </div>
-                {p.allergies && p.allergies !== '' && (
-                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--danger)', background: 'rgba(224,92,92,0.1)', padding: '4px 10px', borderRadius: 6, display: 'inline-block' }}>
-                    ⚠ Allergies: {p.allergies}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-        ))}
-        {!filtered.length && (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: 'var(--text-light)' }}>No patients found.</div>
-        )}
-      </div>
+      {/* Patients Table */}
+      <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: 'rgba(14,165,233,0.1)', borderBottom: '2px solid var(--teal)' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Patient</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gender</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Blood</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>DOB</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Appointments</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Allergies</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--teal)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p, idx) => (
+                <tr key={p.id} style={{ 
+                  borderBottom: '1px solid var(--border)',
+                  background: idx % 2 === 0 ? 'transparent' : 'var(--surface)',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                onClick={() => setSelectedPatient(p)}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,233,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--surface)'}
+                >
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Avatar name={p.name} size={36} />
+                      <strong>{p.name}</strong>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 12 }}>{p.email || '—'}</td>
+                  <td style={{ padding: '12px 16px' }}>{p.phone || '—'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>{p.gender || '—'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    {p.blood ? (
+                      <span style={{ background: 'rgba(224,92,92,0.1)', padding: '4px 10px', borderRadius: 12, color: 'var(--danger)', fontWeight: 600, fontSize: 12 }}>
+                        🩸 {p.blood}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12 }}>{p.dob || '—'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <span style={{ background: 'rgba(14,165,233,0.1)', padding: '4px 10px', borderRadius: 12, color: 'var(--teal)', fontWeight: 700 }}>
+                      {p.appointmentCount}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    {p.allergies && p.allergies !== '' ? (
+                      <span style={{ background: 'rgba(224,92,92,0.1)', padding: '4px 10px', borderRadius: 12, color: 'var(--danger)', fontSize: 11, fontWeight: 600 }}>
+                        ⚠ Yes
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-light)', fontSize: 12 }}>No</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <Btn tiny variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedPatient(p); }}>View</Btn>
+                  </td>
+                </tr>
+              ))}
+              {!filtered.length && (
+                <tr>
+                  <td colSpan="9" style={{ padding: 40, textAlign: 'center', color: 'var(--text-light)' }}>No patients found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Patient Detail Modal */}
       <Modal isOpen={!!selectedPatient} onClose={() => setSelectedPatient(null)} title={selectedPatient?.name || ''} wide>
@@ -491,6 +665,227 @@ function PatientsTab({ patients, appointments }) {
   );
 }
 
+/* ─── Reviews Tab ─── */
+function ReviewsTab() {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/reviews`)
+      .then(res => res.json())
+      .then(data => {
+        setReviews(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch reviews:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-light)' }}>Loading reviews...</div>;
+
+  return (
+    <div>
+      <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '20px', marginBottom: 16 }}>
+        <h3 style={{ fontSize: 16, marginBottom: 8 }}>All Patient Reviews</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-light)' }}>{reviews.length} review{reviews.length !== 1 ? 's' : ''} found</p>
+      </Card>
+
+      {reviews.length === 0 && (
+        <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: 40, textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>⭐</div>
+          <p style={{ color: 'var(--text-light)' }}>No reviews yet.</p>
+        </Card>
+      )}
+
+      <div style={{ display: 'grid', gap: 12 }}>
+        {reviews.map(review => (
+          <Card key={review.id} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', padding: '16px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <Avatar name={review.patient_name} size={40} />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>{review.patient_name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-light)' }}>Reviewed: {review.doctor_name} ({review.doctor_specialty})</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <StarRating value={review.rating} size={20} />
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginTop: 4 }}>{new Date(review.created_at).toLocaleDateString()}</div>
+              </div>
+            </div>
+            
+            {review.comment && (
+              <div style={{ padding: '12px 16px', background: 'var(--surface)', borderRadius: 8, border: '1px solid var(--surface-border)' }}>
+                <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-primary)' }}>{review.comment}</p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 12, color: 'var(--text-light)' }}>
+              <span>📅 Appointment: {review.appointment_date} at {review.appointment_time}</span>
+              <StatusBadge status={review.status} />
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Notifications Tab ─── */
+function NotificationsTab({ doctors, patients }) {
+  const [notifyType, setNotifyType] = useState('doctor');
+  const [selectedUser, setSelectedUser] = useState('');
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const users = notifyType === 'doctor' ? doctors : patients;
+
+  const handleSend = async () => {
+    if (!selectedUser || !title || !message) {
+      setToast({ message: 'Please fill in all fields', type: 'error' });
+      return;
+    }
+
+    setSending(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser,
+          userType: notifyType,
+          title,
+          message,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setToast({ message: 'Notification sent successfully!', type: 'success' });
+        setSelectedUser('');
+        setTitle('');
+        setMessage('');
+      } else {
+        setToast({ message: data.error || 'Failed to send notification', type: 'error' });
+      }
+    } catch (err) {
+      setToast({ message: 'Failed to send notification', type: 'error' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div>
+      <Card style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', padding: '20px', marginBottom: 16 }}>
+        <h3 style={{ fontSize: 16, marginBottom: 8 }}>🔔 Send Notification</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-light)' }}>Notify doctors or patients about important updates</p>
+      </Card>
+
+      <Card style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', padding: '24px' }}>
+        {/* Type Selection */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, color: 'var(--text-light)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' }}>
+            Notify Type
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => { setNotifyType('doctor'); setSelectedUser(''); }}
+              style={{
+                flex: 1, padding: '10px 16px', borderRadius: 9, border: '1px solid var(--border)',
+                background: notifyType === 'doctor' ? 'var(--teal)' : 'var(--surface)',
+                color: notifyType === 'doctor' ? 'var(--navy)' : 'var(--text-primary)',
+                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+              }}
+            >
+              🩺 Doctor
+            </button>
+            <button
+              onClick={() => { setNotifyType('patient'); setSelectedUser(''); }}
+              style={{
+                flex: 1, padding: '10px 16px', borderRadius: 9, border: '1px solid var(--border)',
+                background: notifyType === 'patient' ? 'var(--teal)' : 'var(--surface)',
+                color: notifyType === 'patient' ? 'var(--navy)' : 'var(--text-primary)',
+                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+              }}
+            >
+              🏥 Patient
+            </button>
+          </div>
+        </div>
+
+        {/* User Selection */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, color: 'var(--text-light)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' }}>
+            Select {notifyType === 'doctor' ? 'Doctor' : 'Patient'}
+          </label>
+          <select
+            value={selectedUser}
+            onChange={e => setSelectedUser(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1.5px solid var(--surface-border)',
+              borderRadius: 9, color: 'var(--text-primary)', fontSize: 14, outline: 'none'
+            }}
+          >
+            <option value="">Choose a {notifyType}...</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.name} ({u.email || u.specialty || 'No email'})</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Title */}
+        <div style={{ marginBottom: 20 }}>
+          <Input
+            label="Notification Title"
+            placeholder="e.g. Appointment Reminder, System Update..."
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+          />
+        </div>
+
+        {/* Message */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, color: 'var(--text-light)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' }}>
+            Message
+          </label>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            placeholder="Enter your message..."
+            rows={5}
+            style={{
+              width: '100%', padding: '10px 14px', background: 'var(--surface)', border: '1.5px solid var(--surface-border)',
+              borderRadius: 9, color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', outline: 'none'
+            }}
+            onFocus={e => e.target.style.borderColor = 'var(--teal)'}
+            onBlur={e => e.target.style.borderColor = 'var(--surface-border)'}
+          />
+        </div>
+
+        {/* Send Button */}
+        <Btn
+          variant="primary"
+          onClick={handleSend}
+          disabled={sending || !selectedUser || !title || !message}
+          style={{ width: '100%' }}
+        >
+          {sending ? '📤 Sending...' : '📤 Send Notification'}
+        </Btn>
+      </Card>
+
+      {/* Toast */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    </div>
+  );
+}
+
 /* ─── Main Admin Page ─── */
 export default function AdminPage() {
   const { doctors, appointments, patients, fetchAppointments } = useApp();
@@ -538,6 +933,8 @@ export default function AdminPage() {
       {activeTab === 'appointments' && <AppointmentsTab appointments={appointments} doctors={doctors} onStatusChange={handleDataChange} />}
       {activeTab === 'doctors' && <DoctorsTab doctors={doctors} appointments={appointments} />}
       {activeTab === 'patients' && <PatientsTab patients={patients} appointments={appointments} />}
+      {activeTab === 'reviews' && <ReviewsTab />}
+      {activeTab === 'notifications' && <NotificationsTab doctors={doctors} patients={patients} />}
     </div>
   );
 }

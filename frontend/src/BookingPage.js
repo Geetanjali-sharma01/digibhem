@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from './AppContext';
-import { Card, Btn, Avatar, Input, Modal, StatusBadge, StarRating, Toast, EmptyState } from './components';
+import { Card, Btn, Avatar, Input, Modal, StatusBadge, StarRating, Toast, EmptyState, LoadingSpinner } from './components';
 
 const SPECIALTIES = ['All','Cardiologist','Neurologist','Dermatologist','Orthopedic','Pediatrician','General Physician'];
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
@@ -32,10 +32,26 @@ export default function BookingPage({ setPage }) {
   const [booked, setBooked]       = useState(null);
   const [step, setStep]           = useState(1);
   const [toast, setToast]         = useState(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Booked slots fetched from backend (pending/accepted appointments)
   const [bookedSlots, setBookedSlots] = useState({}); // { date: [slot1, slot2, ...] }
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [loadingBooking, setLoadingBooking] = useState(false);
+
+  // Handle "Book Again" from appointments page
+  useEffect(() => {
+    if (window._bookAgainDoctor) {
+      setSelDoc(window._bookAgainDoctor);
+      setStep(2); // Automatically go to step 2 (date/slot selection)
+      delete window._bookAgainDoctor;
+    }
+    if (window._viewDoctorProfile) {
+      setSelDoc(window._viewDoctorProfile);
+      setStep(1); // Show doctor selection with pre-selected doctor
+      delete window._viewDoctorProfile;
+    }
+  }, []);
 
   // Fetch booked slots when a doctor is selected
   useEffect(() => {
@@ -79,6 +95,7 @@ export default function BookingPage({ setPage }) {
   const goBack = () => { if (step > 1) setStep(s=>s-1); };
 
   const handleBook = async () => {
+    setLoadingBooking(true);
     try {
       const appt = await bookAppointment({ doctorId: selDoc.id, date: selDate, slot: selSlot, reason, symptoms });
       setBooked(appt);
@@ -86,6 +103,8 @@ export default function BookingPage({ setPage }) {
       setToast({ msg: 'Appointment request sent!', type: 'success' });
     } catch (err) {
       setToast({ msg: err.message || 'Booking failed', type: 'error' });
+    } finally {
+      setLoadingBooking(false);
     }
   };
 
@@ -107,16 +126,16 @@ export default function BookingPage({ setPage }) {
           <React.Fragment key={s}>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
               <div style={{ width:32, height:32, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700,
-                background: step > i+1 ? 'var(--success)' : step === i+1 ? 'var(--teal)' : 'rgba(255,255,255,0.08)',
-                color: step > i+1 ? '#fff' : step === i+1 ? 'var(--navy)' : 'var(--text-light)',
-                border: step === i+1 ? 'none' : '1.5px solid rgba(255,255,255,0.1)',
+                background: step > i+1 ? 'var(--success)' : step === i+1 ? 'var(--teal)' : 'var(--surface)',
+                color: step > i+1 ? '#ffffff' : step === i+1 ? 'var(--navy)' : 'var(--text-light)',
+                border: step === i+1 ? 'none' : '1.5px solid var(--surface-border)',
                 transition:'all 0.3s',
               }}>
                 {step > i+1 ? '✓' : i+1}
               </div>
               <span style={{ fontSize:11, color: step===i+1 ? 'var(--teal)' : 'var(--text-light)', fontWeight: step===i+1?600:400, whiteSpace:'nowrap' }}>{s}</span>
             </div>
-            {i < steps.length-1 && <div style={{ flex:1, height:2, background: step > i+1 ? 'var(--success)' : 'rgba(255,255,255,0.08)', margin:'0 4px 20px', transition:'all 0.3s' }} />}
+            {i < steps.length-1 && <div style={{ flex:1, height:2, background: step > i+1 ? 'var(--success)' : 'var(--surface-border)', margin:'0 4px 20px', transition:'all 0.3s' }} />}
           </React.Fragment>
         ))}
       </div>
@@ -127,8 +146,53 @@ export default function BookingPage({ setPage }) {
           <div style={{ display:'flex', gap:10, marginBottom:18, flexWrap:'wrap' }}>
             <div style={{ position:'relative', flex:1, minWidth:200 }}>
               <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', fontSize:16 }}>🔍</span>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name or specialty…"
-                style={{ width:'100%', padding:'10px 14px 10px 38px', background:'var(--card-bg)', border:'1px solid var(--border)', borderRadius:9, color:'#fff', fontSize:14 }} />
+              <input value={search} onChange={e=>setSearch(e.target.value)} onFocus={() => filtered.length > 0 && setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} placeholder="Search name or specialty…"
+                style={{ width:'100%', padding:'10px 14px 10px 38px', background:'var(--card-bg)', border:'1px solid var(--border)', borderRadius:9, color:'var(--text-primary)', fontSize:14 }} />
+              {/* Autocomplete suggestions */}
+              {search && filtered.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  marginTop: 4,
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 9,
+                  maxHeight: 250,
+                  overflowY: 'auto',
+                  zIndex: 100,
+                  boxShadow: 'var(--shadow-sm)',
+                }}>
+                  {filtered.slice(0, 5).map(doc => (
+                    <div
+                      key={doc.id}
+                      onMouseDown={() => {
+                        setSelDoc(doc);
+                        setSearch('');
+                      }}
+                      style={{
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid var(--border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,180,166,0.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Avatar name={doc.name} size={36} photo={doc.photo} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{doc.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-light)' }}>{doc.specialty} · {doc.hospital}</div>
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gold)' }}>₹{doc.fee}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
               {SPECIALTIES.map(s => (
@@ -151,7 +215,7 @@ export default function BookingPage({ setPage }) {
                 <Card key={doc.id} style={{ cursor:'pointer', transition:'transform 0.2s,box-shadow 0.2s', border:`1px solid ${selDoc?.id===doc.id ? 'var(--teal)' : 'var(--border)'}` }}
                   onClick={() => setSelDoc(doc)}>
                   <div style={{ display:'flex', gap:14, marginBottom:14 }}>
-                    <Avatar name={doc.name} size={50} />
+                    <Avatar name={doc.name} size={50} photo={doc.photo} />
                     <div style={{ flex:1 }}>
                       <p style={{ fontWeight:700, fontSize:15 }}>{doc.name}</p>
                       <p style={{ fontSize:12, color:'var(--teal)', fontWeight:500 }}>{doc.specialty}</p>
@@ -182,18 +246,37 @@ export default function BookingPage({ setPage }) {
       {/* ── STEP 2: Date & Time ── */}
       {step === 2 && selDoc && (
         <div>
-          <Card style={{ marginBottom:20, display:'flex', gap:16, alignItems:'center' }}>
-            <Avatar name={selDoc.name} size={48} />
-            <div>
-              <p style={{ fontWeight:700 }}>{selDoc.name}</p>
-              <p style={{ fontSize:13, color:'var(--teal)' }}>{selDoc.specialty} · {selDoc.hospital}</p>
-              <p style={{ fontSize:13, color:'var(--gold)' }}>Consultation fee: ₹{selDoc.fee}</p>
+          {/* Doctor Details Card */}
+          <Card style={{ marginBottom:24, padding:24, background:'linear-gradient(135deg, var(--card-bg) 0%, rgba(14,165,233,0.05) 100%)', border:'1px solid var(--border)' }}>
+            <div style={{ display:'flex', gap:20, alignItems:'flex-start', marginBottom:16 }}>
+              <Avatar name={selDoc.name} size={80} photo={selDoc.photo} />
+              <div style={{ flex:1 }}>
+                <h2 style={{ fontSize:22, marginBottom:4 }}>{selDoc.name}</h2>
+                <p style={{ fontSize:15, color:'var(--teal)', fontWeight:600, marginBottom:8 }}>{selDoc.specialty}</p>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px 16px', fontSize:13, color:'var(--text-light)' }}>
+                  <span>🎓 {selDoc.qualification}</span>
+                  <span>🏥 {selDoc.hospital}</span>
+                  <span>⏱ {selDoc.experience} experience</span>
+                  <span style={{ fontSize:16, fontWeight:700, color:'var(--gold)' }}>💰 ₹{selDoc.fee} / visit</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap', fontSize:13 }}>
+              <span style={{ padding:'6px 12px', background:'rgba(14,165,233,0.1)', borderRadius:8, color:'var(--teal)' }}>
+                ⭐ {(selDoc.ratingCount ? (selDoc.ratingSum/selDoc.ratingCount).toFixed(1) : '—')} rating
+              </span>
+              <span style={{ padding:'6px 12px', background:'rgba(16,185,129,0.1)', borderRadius:8, color:'var(--success)' }}>
+                ✓ {selDoc.ratingCount || 0} reviews
+              </span>
+              <span style={{ padding:'6px 12px', background:'rgba(251,191,36,0.1)', borderRadius:8, color:'var(--gold)' }}>
+                📅 10 slots/day
+              </span>
             </div>
           </Card>
 
-          <h3 style={{ fontSize:16, marginBottom:14 }}>Select a Date</h3>
+          <h3 style={{ fontSize:18, marginBottom:16, fontWeight:700 }}>📅 Select Appointment Date</h3>
           {loadingSlots
-            ? <div style={{ padding:'24px', color:'var(--text-light)', textAlign:'center' }}>Loading availability...</div>
+            ? <LoadingSpinner text="Loading availability..." />
             : availDates.length === 0
             ? <EmptyState icon="📭" title="No available dates" sub="This doctor has no open slots currently." />
             : (
@@ -237,9 +320,9 @@ export default function BookingPage({ setPage }) {
                       style={{
                         padding:'10px 20px', borderRadius:9, fontSize:14,
                         fontWeight: isSelected ? 700 : taken ? 400 : 400,
-                        background: taken ? 'rgba(255,255,255,0.03)' : isSelected ? 'var(--teal)' : 'rgba(255,255,255,0.06)',
-                        color: taken ? 'rgba(255,255,255,0.25)' : isSelected ? 'var(--navy)' : 'var(--white)',
-                        border: `1.5px solid ${taken ? 'rgba(255,255,255,0.06)' : isSelected ? 'var(--teal)' : 'var(--border)'}`,
+                        background: taken ? 'var(--surface)' : isSelected ? 'var(--teal)' : 'var(--card-bg)',
+                        color: taken ? 'var(--text-light)' : isSelected ? 'var(--navy)' : 'var(--text-primary)',
+                        border: `1.5px solid ${taken ? 'var(--surface-border)' : isSelected ? 'var(--teal)' : 'var(--border)'}`,
                         cursor: taken ? 'not-allowed' : 'pointer',
                         opacity: taken ? 0.5 : 1,
                         textDecoration: taken ? 'line-through' : 'none',
@@ -266,7 +349,7 @@ export default function BookingPage({ setPage }) {
         <div>
           <Card style={{ marginBottom:20 }}>
             <div style={{ display:'flex', gap:14, alignItems:'center' }}>
-              <Avatar name={selDoc.name} size={44} />
+              <Avatar name={selDoc.name} size={44} photo={selDoc.photo} />
               <div>
                 <p style={{ fontWeight:700 }}>{selDoc.name} · {selDoc.specialty}</p>
                 <p style={{ fontSize:13, color:'var(--teal)' }}>📅 {fmt(selDate)} &nbsp;🕐 {selSlot}</p>
@@ -308,7 +391,9 @@ export default function BookingPage({ setPage }) {
           <p style={{ fontSize:13, color:'var(--text-light)', marginBottom:20 }}>⚠️ Your request will be sent to the doctor for confirmation.</p>
           <div style={{ display:'flex', gap:10, justifyContent:'space-between' }}>
             <Btn variant="ghost" onClick={goBack}>← Back</Btn>
-            <Btn variant="success" onClick={handleBook} style={{ padding:'12px 32px' }}>✓ Confirm Booking</Btn>
+            <Btn variant="success" onClick={handleBook} disabled={loadingBooking} style={{ padding:'12px 32px' }}>
+              {loadingBooking ? '⏳ Booking...' : '✓ Confirm Booking'}
+            </Btn>
           </div>
         </div>
       )}
